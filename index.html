@@ -290,7 +290,7 @@ function renderPACS() {
     </table><p class="muted">點選檢查以開啟影像。</p></div></div>`;
   const search = () => { S.pacsQ = document.getElementById('q').value; renderPACS(); };
   document.getElementById('go').onclick = search;
-  document.getElementById('q').onkeydown = e => e.key === 'Enter' && !e.isComposing && e.keyCode !== 229 && search();
+  document.getElementById('q').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) search(); };
   main.querySelectorAll('tr[data-acc]').forEach(tr => tr.onclick = () => {
     S.study = studies.find(s => s.acc === tr.dataset.acc); log(`PACS 開啟影像 ${S.study.acc} ${pLabel(S.study.chart)}`); renderPACS();
   });
@@ -460,7 +460,7 @@ function renderLab() {
   </div>`;
   const search = () => { S.labQ = document.getElementById('q').value; S.labChart = null; renderLab(); if (S.labChart) log(`查詢檢驗報告 ${pLabel(S.labChart)}`); };
   document.getElementById('go').onclick = search;
-  document.getElementById('q').onkeydown = e => e.key === 'Enter' && !e.isComposing && e.keyCode !== 229 && search();
+  document.getElementById('q').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) search(); };
   main.querySelectorAll('tr[data-c]').forEach(tr => tr.onclick = () => { S.labChart = tr.dataset.c; log(`查詢檢驗報告 ${pLabel(S.labChart)}`); renderLab(); });
 }
 
