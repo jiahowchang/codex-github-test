@@ -74,7 +74,7 @@
 <body>
 <aside class="sidebar">
   <div class="logo top" data-go="home">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M8 4.5v7M4.5 8h7"/></svg>TWGH
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M8 4.5v7M4.5 8h7"/></svg>模擬醫院
   </div>
   <nav>
     <button data-go="ct">
@@ -88,7 +88,7 @@
       檢驗報告<br>查詢系統</button>
   </nav>
   <div class="logo">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5l5.5 2v4.5c0 3.2-2.4 5.6-5.5 6.5C4.9 13.6 2.5 11.2 2.5 8V3.5z"/><path d="M5.5 8l2 2 3-3.5"/></svg>NCMEA
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5l5.5 2v4.5c0 3.2-2.4 5.6-5.5 6.5C4.9 13.6 2.5 11.2 2.5 8V3.5z"/><path d="M5.5 8l2 2 3-3.5"/></svg>訓練用
   </div>
 </aside>
 <main id="main"></main>
@@ -335,7 +335,7 @@ function renderViewer(st) {
   const octx = off.getContext('2d'), img = octx.createImageData(N, N);
   const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k));
   document.getElementById('tl').textContent = `${p.name}\n${st.chart}\n${sexAge(p)}`;
-  document.getElementById('tr').textContent = `TWGH\n${st.date}\n${st.acc}\n${st.desc}`;
+  document.getElementById('tr').textContent = `模擬醫院\n${st.date}\n${st.acc}\n${st.desc}`;
   function draw() {
     const a = slice(), lo = V.wl - V.ww / 2;
     for (let n = 0; n < N * N; n++) {
