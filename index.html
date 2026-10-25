@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>醫事放射模擬系統</title>
+<style>
+  :root {
+    --side-bg: #f4f5f7; --line: #e3e5ea; --main-bg: #f7f8fc; --text: #333; --muted: #777;
+    --accent: #2b6cb0; --danger: #c53030; --low: #2b6cb0; --ok: #2f855a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; color: var(--text); background: var(--main-bg); }
+
+  /* 左側選單 */
+  .sidebar { width: 92px; flex: none; background: var(--side-bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 6px 0; }
+  .logo { font-style: italic; color: #888; font-size: 15px; display: flex; align-items: center; gap: 3px; cursor: pointer; padding: 4px; border: 1px solid transparent; }
+  .logo.top { border-color: var(--line); background: #fff; }
+  .logo svg { width: 13px; height: 13px; }
+  nav { display: flex; flex-direction: column; gap: 6px; }
+  nav button { background: none; border: none; cursor: pointer; color: #666; font: inherit; font-size: 13px; line-height: 1.35; padding: 6px 4px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; }
+  nav button svg { width: 24px; height: 24px; margin-bottom: 2px; color: #444; }
+  nav button:hover { background: #e9ebf0; }
+  nav button.active { background: #dde6f3; color: var(--accent); }
+  nav button.active svg { color: var(--accent); }
+
+  main { flex: 1; min-width: 0; overflow: auto; }
+  .home { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; }
+
+  /* 共用元件 */
+  .page { padding: 16px 20px; }
+  .page h1 { font-size: 18px; margin: 0 0 12px; display: flex; align-items: center; gap: 12px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 15px; margin: 0 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: nowrap; }
+  th { background: #f0f2f6; font-weight: 600; }
+  tr.click { cursor: pointer; }
+  tr.click:hover { background: #f3f7fc; }
+  tr.sel { background: #dde6f3 !important; }
+  button.btn { font: inherit; font-size: 14px; padding: 5px 14px; border-radius: 4px; border: 1px solid #bbb; background: #fff; cursor: pointer; }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn.warn { border-color: var(--danger); color: var(--danger); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  input[type=text], select, textarea { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 4px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .grow { flex: 1; min-width: 300px; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; font-size: 14px; }
+  .kv b { color: var(--muted); font-weight: 400; }
+  .red { color: var(--danger); font-weight: 600; }
+  .blue { color: var(--low); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 12px; background: #eee; }
+  .tag.done { background: #c6f6d5; color: var(--ok); }
+  .tag.hold { background: #fed7d7; color: var(--danger); }
+  .tag.run { background: #feebc8; color: #b7791f; }
+  .checks label { display: block; font-size: 14px; margin: 4px 0; }
+  .progress { height: 14px; background: #eee; border-radius: 7px; overflow: hidden; margin-top: 8px; }
+  .progress div { height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+  .log { font-family: monospace; font-size: 12px; max-height: 160px; overflow: auto; background: #fafafa; border: 1px solid var(--line); padding: 6px; }
+
+  /* PACS 影像檢視 */
+  .viewer { display: flex; flex-direction: column; height: 100%; background: #000; }
+  .vbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 10px; background: #222; }
+  .vbar button { font: inherit; font-size: 13px; padding: 3px 10px; background: #3a3a3a; color: #eee; border: 1px solid #555; border-radius: 3px; cursor: pointer; }
+  .vbar button.on { background: var(--accent); border-color: var(--accent); }
+  .vbar span { color: #aaa; font-size: 13px; margin-left: 6px; }
+  .vwrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .vwrap canvas { cursor: crosshair; max-width: 100%; max-height: 100%; }
+  .ov { position: absolute; color: #ffd76a; font-size: 13px; font-family: monospace; line-height: 1.4; pointer-events: none; white-space: pre; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo top" data-go="home">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M8 4.5v7M4.5 8h7"/></svg>TWGH
+  </div>
+  <nav>
+    <button data-go="ct">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="11" rx="1"/><path d="M2 19h20"/></svg>
+      電腦斷層<br>掃描系統</button>
+    <button data-go="pacs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M4 17l5-5 4 4 2-2 5 5"/><circle cx="17" cy="6" r="2.5"/><path d="M19 8l2 2"/></svg>
+      PACS<br>影像系統</button>
+    <button data-go="lab">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-3 4.5-6 7.8-6 11a6 6 0 0 0 12 0c0-3.2-3-6.5-6-11z"/></svg>
+      檢驗報告<br>查詢系統</button>
+  </nav>
+  <div class="logo">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5l5.5 2v4.5c0 3.2-2.4 5.6-5.5 6.5C4.9 13.6 2.5 11.2 2.5 8V3.5z"/><path d="M5.5 8l2 2 3-3.5"/></svg>NCMEA
+  </div>
+</aside>
+<main id="main"></main>
+
+<script>
+// ===== 模擬資料（皆為虛構） =====
+const today = new Date();
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const daysAgo = n => { const d = new Date(today); d.setDate(d.getDate() - n); return ymd(d); };
+const todayStr = ymd(today);
+const accDay = todayStr.replace(/-/g, '');
+function age(dob) {
+  const b = new Date(dob); let a = today.getFullYear() - b.getFullYear();
+  if (today.getMonth() < b.getMonth() || (today.getMonth() === b.getMonth() && today.getDate() < b.getDate())) a--;
+  return a;
+}
+
+const patients = {
+  '10023456': { name: '王大明', sex: 'M', dob: '1958-03-12', allergy: '無' },
+  '10023457': { name: '王大銘', sex: 'M', dob: '1962-07-08', allergy: '無' },
+  '10031822': { name: '陳美玲', sex: 'F', dob: '1993-11-02', allergy: '無' },
+  '10045519': { name: '林志豪', sex: 'M', dob: '1949-01-25', allergy: 'Penicillin（皮疹）' },
+  '10052003': { name: '張淑芬', sex: 'F', dob: '1971-05-30', allergy: '含碘顯影劑（蕁麻疹，2023）' },
+};
+
+const orders = [
+  { chart: '10023456', exam: 'Chest CT', region: 'chest', contrast: true, dept: '胸腔內科', dx: '右上肺結節追蹤' },
+  { chart: '10023457', exam: 'Brain CT', region: 'brain', contrast: false, dept: '急診醫學科', dx: '頭部外傷，意識改變' },
+  { chart: '10031822', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般外科', dx: '右下腹痛 r/o 闌尾炎' },
+  { chart: '10045519', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '無痛性血尿' },
+  { chart: '10052003', exam: 'Chest CT', region: 'chest', contrast: true, dept: '心臟血管內科', dx: '胸痛 r/o 主動脈剝離' },
+].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
+
+// 項目: [名稱, 單位, 下限, 上限]
+const labDefs = {
+  CRE: ['Creatinine', 'mg/dL', 0.6, 1.3], EGFR: ['eGFR', 'mL/min/1.73m²', 60, null], BUN: ['BUN', 'mg/dL', 7, 20],
+  NA: ['Na', 'mmol/L', 136, 145], K: ['K', 'mmol/L', 3.5, 5.1], WBC: ['WBC', '10³/µL', 4.0, 10.0],
+  HB: ['Hb', 'g/dL', 12, 16], PLT: ['PLT', '10³/µL', 150, 400], HCG: ['β-hCG (血清)', 'mIU/mL', null, 5],
+};
+const labs = {
+  '10023456': [{ date: daysAgo(3), dept: '胸腔內科', v: { CRE: 0.98, EGFR: 82, BUN: 15, NA: 140, K: 4.1, WBC: 6.2, HB: 14.1, PLT: 230 } }],
+  '10023457': [{ date: todayStr, dept: '急診醫學科', v: { CRE: 1.05, EGFR: 74, NA: 138, K: 3.9, WBC: 11.8, HB: 13.5, PLT: 210 } }],
+  '10031822': [{ date: todayStr, dept: '一般外科', v: { CRE: 0.62, EGFR: 118, WBC: 13.6, HB: 12.4, PLT: 280, HCG: 1250 } }],
+  '10045519': [
+    { date: daysAgo(2), dept: '泌尿科', v: { CRE: 2.41, EGFR: 26, BUN: 38, NA: 137, K: 5.4, HB: 10.8, PLT: 198 } },
+    { date: daysAgo(60), dept: '腎臟內科', v: { CRE: 1.92, EGFR: 34, BUN: 30, K: 5.0 } },
+  ],
+  '10052003': [{ date: daysAgo(1), dept: '心臟血管內科', v: { CRE: 0.85, EGFR: 79, NA: 141, K: 4.0, HB: 12.9, PLT: 250, HCG: '<2' } }],
+};
+
+const studies = [
+  { acc: 'CT20250918007', chart: '10023456', date: daysAgo(380), desc: 'Chest CT (C+)', region: 'chest', contrast: true },
+  { acc: 'CT20240311015', chart: '10045519', date: daysAgo(560), desc: 'Abdomen CT (C-)', region: 'abdomen', contrast: false },
+  { acc: 'CT20231102004', chart: '10052003', date: daysAgo(1080), desc: 'Chest CT (C-)', region: 'chest', contrast: false },
+];
+
+// ===== 狀態與路由 =====
+const S = { view: 'home', ctSel: null, pacsQ: '', study: null, labQ: '', labChart: null, log: [] };
+const main = document.getElementById('main');
+const log = msg => S.log.unshift(`${new Date().toLocaleTimeString('zh-TW', { hour12: false })}  ${msg}`);
+const pLabel = c => `${patients[c].name}（${c}）`;
+const sexAge = p => `${p.sex === 'M' ? '男' : '女'} / ${age(p.dob)} 歲`;
+
+document.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
+function go(view) {
+  S.view = view; S.study = null;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.go === view));
+  render();
+}
+function render() {
+  ({ home: () => main.innerHTML = '<div class="home">請由左側選單選擇功能</div>', ct: renderCT, pacs: renderPACS, lab: renderLab })[S.view]();
+}
+
+// ===== 電腦斷層掃描系統 =====
+const checkItems = [
+  '已以兩種以上辨識資料（姓名、出生日期／病歷號）核對病人身分',
+  '已確認檢查部位與醫囑相符',
+  '已確認過敏史',
+  '已查詢腎功能（Creatinine / eGFR）',
+  '已確認懷孕狀態（女性 12–55 歲）',
+  '已移除檢查部位金屬物品',
+];
+function renderCT() {
+  const o = orders.find(x => x.acc === S.ctSel);
+  main.innerHTML = `<div class="page">
+    <h1>電腦斷層掃描系統 <span class="muted">工作清單 ${todayStr}</span></h1>
+    <div class="card"><table>
+      <tr><th>時間</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>檢查項目</th><th>顯影劑</th><th>開單科別</th><th>狀態</th></tr>
+      ${orders.map(x => { const p = patients[x.chart]; return `<tr class="click ${x.acc === S.ctSel ? 'sel' : ''}" data-acc="${x.acc}">
+        <td>${x.time}</td><td>${x.acc}</td><td>${x.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${x.exam}</td>
+        <td>${x.contrast ? '有' : '無'}</td><td>${x.dept}</td><td>${statusTag(x.status)}</td></tr>`; }).join('')}
+    </table></div>
+    ${o ? ctDetail(o) : '<p class="muted">請點選工作清單中的檢查。</p>'}
+    <div class="card"><h2>操作紀錄 <button class="btn" id="reset" style="float:right;font-size:12px;padding:2px 8px">重設模擬資料</button></h2>
+      <div class="log">${S.log.join('<br>') || '（尚無紀錄）'}</div></div>
+  </div>`;
+  main.querySelectorAll('tr[data-acc]').forEach(tr => tr.onclick = () => {
+    S.ctSel = tr.dataset.acc; log(`選取檢查 ${S.ctSel} ${pLabel(orders.find(x => x.acc === S.ctSel).chart)}`); renderCT();
+  });
+  document.getElementById('reset').onclick = () => confirm('確定重設所有模擬資料？') && location.reload();
+  if (o) bindCT(o);
+}
+function statusTag(s) { return `<span class="tag ${{ 已完成: 'done', 暫停: 'hold', 掃描中: 'run' }[s] || ''}">${s}</span>`; }
+function ctDetail(o) {
+  const p = patients[o.chart], locked = o.status !== '待檢查';
+  return `<div class="row">
+    <div class="card grow"><h2>病人資料</h2><div class="kv">
+      <b>姓名</b><span>${p.name}</span><b>病歷號</b><span>${o.chart}</span>
+      <b>性別/年齡</b><span>${sexAge(p)}</span><b>出生日期</b><span>${p.dob}</span>
+      <b>過敏史</b><span class="${p.allergy === '無' ? '' : 'red'}">${p.allergy}</span>
+      <b>開單科別</b><span>${o.dept}</span><b>臨床診斷</b><span>${o.dx}</span>
+      <b>檢查項目</b><span>${o.exam}（${o.contrast ? '含顯影劑' : '不含顯影劑'}）</span>
+      ${o.note ? `<b>備註</b><span class="red">${o.note}</span>` : ''}
+    </div></div>
+    <div class="card grow"><h2>檢查前核對</h2><div class="checks">
+      ${checkItems.map((t, i) => `<label><input type="checkbox" class="chk" ${locked ? 'checked disabled' : ''}> ${t}</label>`).join('')}
+    </div></div>
+    <div class="card grow"><h2>掃描參數</h2><div class="kv">
+      <b>掃描部位</b><span>${{ chest: '胸部', brain: '頭部', abdomen: '腹部' }[o.region]}</span>
+      <b>顯影劑</b><span><label><input type="checkbox" id="useC" ${o.contrast ? 'checked' : ''} ${locked ? 'disabled' : ''}> 注射含碘顯影劑</label></span>
+      <b>kVp</b><span><select id="kvp" ${locked ? 'disabled' : ''}>${[80, 100, 120, 140].map(v => `<option ${v === 120 ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
+      <b>mA</b><span><select ${locked ? 'disabled' : ''}><option>Auto mA</option><option>200</option><option>300</option></select></span>
+      <b>切片厚度</b><span><select ${locked ? 'disabled' : ''}><option>1.25 mm</option><option>2.5 mm</option><option selected>5 mm</option></select></span>
+      <b>備註</b><span><textarea id="note" rows="2" style="width:100%" ${locked ? 'disabled' : ''} placeholder="暫停檢查時必須填寫原因"></textarea></span>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="btn primary" id="start" disabled>開始掃描</button>
+      <button class="btn warn" id="hold" ${locked ? 'disabled' : ''}>暫停檢查</button>
+    </div>
+    <div class="progress"><div id="bar" style="width:${o.status === '已完成' ? 100 : 0}%"></div></div>
+    <div class="muted" id="msg">${o.status === '已完成' ? '掃描完成，影像已傳送至 PACS。' : ''}</div>
+    </div></div>`;
+}
+function bindCT(o) {
+  if (o.status !== '待檢查') return;
+  const chks = [...main.querySelectorAll('.chk')], start = document.getElementById('start');
+  chks.forEach(c => c.onchange = () => start.disabled = !chks.every(x => x.checked));
+  document.getElementById('hold').onclick = () => {
+    const note = document.getElementById('note').value.trim();
+    if (!note) return alert('請於備註填寫暫停原因。');
+    o.status = '暫停'; o.note = note; log(`暫停檢查 ${o.acc}，原因：${note}`); renderCT();
+  };
+  start.onclick = () => {
+    const useC = document.getElementById('useC').checked;
+    if (useC !== o.contrast && !document.getElementById('note').value.trim()) return alert('顯影劑使用與醫囑不同，請於備註填寫原因。');
+    o.status = '掃描中'; o.useContrast = useC;
+    log(`開始掃描 ${o.acc}（${useC ? '含' : '不含'}顯影劑，${document.getElementById('kvp').value} kVp）`);
+    main.querySelectorAll('.card input, .card select, .card textarea, .card button.btn:not(#reset)').forEach(e => e.disabled = true);
+    const bar = document.getElementById('bar'), msg = document.getElementById('msg');
+    let pct = 0;
+    const timer = setInterval(() => {
+      pct += 10; bar.style.width = pct + '%'; msg.textContent = `掃描中… ${pct}%`;
+      if (pct < 100) return;
+      clearInterval(timer);
+      o.status = '已完成';
+      studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})`, region: o.region, contrast: useC });
+      log(`掃描完成 ${o.acc}，影像已傳送至 PACS`);
+      if (S.view === 'ct') renderCT();
+    }, 400);
+  };
+}
+
+// ===== PACS 影像系統 =====
+function renderPACS() {
+  if (S.study) return renderViewer(S.study);
+  const q = S.pacsQ.trim();
+  const list = studies.filter(s => !q || s.chart.includes(q) || patients[s.chart].name.includes(q) || s.acc.includes(q))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  main.innerHTML = `<div class="page">
+    <h1>PACS 影像系統</h1>
+    <div class="card row" style="align-items:center">
+      <span>病歷號／姓名／檢查單號</span><input type="text" id="q" value="${q}"><button class="btn primary" id="go">查詢</button>
+    </div>
+    <div class="card"><table>
+      <tr><th>檢查日期</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>Modality</th><th>檢查描述</th><th>影像數</th></tr>
+      ${list.map(s => { const p = patients[s.chart]; return `<tr class="click" data-acc="${s.acc}">
+        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>CT</td><td>${s.desc}</td><td>${NSLICE}</td></tr>`; }).join('')
+        || '<tr><td colspan="8" class="muted">查無影像</td></tr>'}
+    </table><p class="muted">點選檢查以開啟影像。</p></div></div>`;
+  const search = () => { S.pacsQ = document.getElementById('q').value; renderPACS(); };
+  document.getElementById('go').onclick = search;
+  document.getElementById('q').onkeydown = e => e.key === 'Enter' && search();
+  main.querySelectorAll('tr[data-acc]').forEach(tr => tr.onclick = () => {
+    S.study = studies.find(s => s.acc === tr.dataset.acc); log(`PACS 開啟影像 ${S.study.acc} ${pLabel(S.study.chart)}`); renderPACS();
+  });
+}
+
+const N = 256, NSLICE = 40;
+const presets = { chest: [['肺窗', -600, 1500], ['縱膈腔', 40, 400], ['骨窗', 400, 1800]], abdomen: [['腹部', 40, 400], ['肝臟', 60, 160], ['骨窗', 400, 1800]], brain: [['腦窗', 40, 80], ['硬膜下', 75, 215], ['骨窗', 600, 2800]] };
+const inEl = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+
+// 產生合成 CT 切面（HU 值）
+function makeSlice(region, contrast, k) {
+  const a = new Float32Array(N * N), t = k / (NSLICE - 1);
+  let seed = k * 9973 + 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const s = Math.sin(Math.PI * (0.15 + 0.7 * t));
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = (i - N / 2) / (N / 2), y = (j - N / 2) / (N / 2);
+    let v = -1000;
+    if (region === 'brain') {
+      if (inEl(x, y, 0, 0, 0.72 * s, 0.88 * s)) v = 1000;
+      if (inEl(x, y, 0, 0, 0.66 * s, 0.82 * s)) v = 35;
+      if (t > 0.35 && t < 0.7 && (inEl(x, y, -0.1, -0.05, 0.06, 0.22) || inEl(x, y, 0.1, -0.05, 0.06, 0.22))) v = 5;
+    } else {
+      if (inEl(x, y, 0, 0.05, 0.85, 0.6)) v = -100;
+      if (inEl(x, y, 0, 0.05, 0.79, 0.54)) v = 40;
+      if (region === 'chest') {
+        const ls = 0.55 + 0.45 * Math.sin(Math.PI * t);
+        if (inEl(x, y, -0.38, 0, 0.28 * ls, 0.4 * ls) || inEl(x, y, 0.38, 0, 0.28 * ls, 0.4 * ls)) v = -850;
+        if (t > 0.4 && inEl(x, y, 0.08, 0.02, 0.22, 0.2)) v = contrast ? 160 : 40;
+        if (inEl(x, y, 0.1, 0.3, 0.06, 0.06)) v = contrast ? 300 : 45;
+      } else {
+        if (inEl(x, y, -0.35, -0.02, 0.33 * s, 0.33 * s)) v = contrast ? 110 : 60;
+        if (inEl(x, y, -0.32, 0.3, 0.1, 0.12) || inEl(x, y, 0.32, 0.3, 0.1, 0.12)) v = contrast ? 180 : 35;
+        if (inEl(x, y, 0.06, 0.28, 0.045, 0.045)) v = contrast ? 250 : 45;
+        for (let b = 0; b < 4; b++) if (inEl(x, y, 0.15 + 0.12 * Math.cos(b * 1.7 + t * 6), -0.15 + 0.1 * Math.sin(b * 2.3 + t * 5), 0.05, 0.04)) v = -900;
+      }
+      if (inEl(x, y, 0, 0.45, 0.1, 0.09)) v = 700;
+      if (inEl(x, y, 0, 0.45, 0.07, 0.06)) v = 250;
+    }
+    a[j * N + i] = v + (rnd() - 0.5) * 20;
+  }
+  return a;
+}
+
+function renderViewer(st) {
+  const p = patients[st.chart], ps = presets[st.region];
+  const V = { k: Math.floor(NSLICE / 2), wl: ps[0][1], ww: ps[0][2], inv: false, zoom: 1, cache: {}, hu: '' };
+  main.innerHTML = `<div class="viewer">
+    <div class="vbar">
+      <button id="back">← 返回清單</button>
+      ${ps.map((x, i) => `<button data-p="${i}">${x[0]}</button>`).join('')}
+      <button id="inv">反相</button><button id="zin">放大</button><button id="zout">縮小</button><button id="rst">重設</button>
+      <span>滾輪：切換切面　拖曳：調整 W/L　游標：顯示 HU</span>
+    </div>
+    <div class="vwrap"><canvas id="cv" width="512" height="512"></canvas>
+      <div class="ov" id="tl" style="top:8px;left:12px"></div><div class="ov" id="tr" style="top:8px;right:12px;text-align:right"></div>
+      <div class="ov" id="bl" style="bottom:8px;left:12px"></div><div class="ov" id="br" style="bottom:8px;right:12px;text-align:right"></div>
+      <div class="ov" style="top:50%;left:12px">R</div><div class="ov" style="top:50%;right:12px">L</div>
+    </div></div>`;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const off = document.createElement('canvas'); off.width = off.height = N;
+  const octx = off.getContext('2d'), img = octx.createImageData(N, N);
+  const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k));
+  document.getElementById('tl').textContent = `${p.name}\n${st.chart}\n${sexAge(p)}`;
+  document.getElementById('tr').textContent = `TWGH\n${st.date}\n${st.acc}\n${st.desc}`;
+  function draw() {
+    const a = slice(), lo = V.wl - V.ww / 2;
+    for (let n = 0; n < N * N; n++) {
+      let g = Math.max(0, Math.min(255, (a[n] - lo) / V.ww * 255));
+      if (V.inv) g = 255 - g;
+      img.data[n * 4] = img.data[n * 4 + 1] = img.data[n * 4 + 2] = g; img.data[n * 4 + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
+    ctx.imageSmoothingEnabled = true;
+    const sz = 512 * V.zoom; ctx.drawImage(off, (512 - sz) / 2, (512 - sz) / 2, sz, sz);
+    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${NSLICE}\nThk: 5.0 mm\nZoom: ${V.zoom.toFixed(1)}x${V.hu}`;
+    document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}`;
+  }
+  const setP = i => { V.wl = ps[i][1]; V.ww = ps[i][2]; draw(); };
+  document.getElementById('back').onclick = () => { S.study = null; renderPACS(); };
+  main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => setP(+b.dataset.p));
+  document.getElementById('inv').onclick = () => { V.inv = !V.inv; draw(); };
+  document.getElementById('zin').onclick = () => { V.zoom = Math.min(4, V.zoom + 0.5); draw(); };
+  document.getElementById('zout').onclick = () => { V.zoom = Math.max(1, V.zoom - 0.5); draw(); };
+  document.getElementById('rst').onclick = () => { V.inv = false; V.zoom = 1; setP(0); };
+  cv.onwheel = e => { e.preventDefault(); V.k = Math.max(0, Math.min(NSLICE - 1, V.k + Math.sign(e.deltaY))); draw(); };
+  let drag = null;
+  cv.onmousedown = e => drag = { x: e.clientX, y: e.clientY, wl: V.wl, ww: V.ww };
+  window.onmouseup = () => drag = null;
+  cv.onmousemove = e => {
+    const r = cv.getBoundingClientRect(), sz = 512 * V.zoom;
+    const px = ((e.clientX - r.left) * 512 / r.width - (512 - sz) / 2) / sz * N, py = ((e.clientY - r.top) * 512 / r.height - (512 - sz) / 2) / sz * N;
+    V.hu = px >= 0 && py >= 0 && px < N && py < N ? `\nHU: ${Math.round(slice()[Math.floor(py) * N + Math.floor(px)])}` : '';
+    if (drag) { V.ww = Math.max(1, drag.ww + (e.clientX - drag.x) * 4); V.wl = drag.wl + (e.clientY - drag.y) * 2; }
+    draw();
+  };
+  draw();
+}
+
+// ===== 檢驗報告查詢系統 =====
+function renderLab() {
+  const q = S.labQ.trim();
+  const hits = q ? Object.keys(patients).filter(c => c.includes(q) || patients[c].name.includes(q)) : [];
+  if (hits.length === 1) S.labChart = hits[0];
+  const c = S.labChart, p = c && patients[c];
+  main.innerHTML = `<div class="page">
+    <h1>檢驗報告查詢系統</h1>
+    <div class="card row" style="align-items:center">
+      <span>病歷號／姓名</span><input type="text" id="q" value="${q}"><button class="btn primary" id="go">查詢</button>
+    </div>
+    ${q && hits.length === 0 ? '<p class="muted">查無符合的病人。</p>' : ''}
+    ${hits.length > 1 ? `<div class="card"><h2>符合 ${hits.length} 位病人，請選擇</h2><table>
+      <tr><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>出生日期</th></tr>
+      ${hits.map(h => `<tr class="click ${h === c ? 'sel' : ''}" data-c="${h}"><td>${h}</td><td>${patients[h].name}</td><td>${sexAge(patients[h])}</td><td>${patients[h].dob}</td></tr>`).join('')}
+    </table></div>` : ''}
+    ${p && hits.includes(c) ? `<div class="card"><div class="kv" style="grid-template-columns:70px 1fr 70px 1fr 70px 1fr">
+      <b>姓名</b><span>${p.name}</span><b>病歷號</b><span>${c}</span><b>性別/年齡</b><span>${sexAge(p)}</span></div></div>
+      ${labs[c].map(r => `<div class="card"><h2>採檢日期 ${r.date}　<span class="muted">${r.dept}</span></h2><table>
+        <tr><th>檢驗項目</th><th>結果</th><th>單位</th><th>參考值</th><th>註記</th></tr>
+        ${Object.entries(r.v).map(([k, v]) => { const [nm, u, lo, hi] = labDefs[k]; const f = typeof v === 'number' ? (lo != null && v < lo ? 'L' : hi != null && v > hi ? 'H' : '') : '';
+          return `<tr><td>${nm}</td><td class="${f === 'H' ? 'red' : f === 'L' ? 'blue' : ''}">${v}</td><td>${u}</td>
+          <td>${lo == null ? '< ' + hi : hi == null ? '≥ ' + lo : lo + ' – ' + hi}</td><td class="${f === 'H' ? 'red' : 'blue'}">${f}</td></tr>`; }).join('')}
+      </table></div>`).join('')}` : ''}
+  </div>`;
+  const search = () => { S.labQ = document.getElementById('q').value; S.labChart = null; renderLab(); if (S.labChart) log(`查詢檢驗報告 ${pLabel(S.labChart)}`); };
+  document.getElementById('go').onclick = search;
+  document.getElementById('q').onkeydown = e => e.key === 'Enter' && search();
+  main.querySelectorAll('tr[data-c]').forEach(tr => tr.onclick = () => { S.labChart = tr.dataset.c; log(`查詢檢驗報告 ${pLabel(S.labChart)}`); renderLab(); });
+}
+
+go('home');
+</script>
+</body>
+</html>
