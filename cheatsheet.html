@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>選手速記卡</title>
+<style>
+  :root { --text: #222; --muted: #666; --line: #d6dae2; --bg: #fff; --head: #2b6cb0; --do: #2f855a; --say: #b7791f; --no: #c53030; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: 13px; line-height: 1.5; }
+  .page { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 12px; margin: 2px 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+  section { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; break-inside: avoid; }
+  section h2 { font-size: 14px; margin: 0 0 4px; color: var(--head); }
+  section.do h2 { color: var(--do); } section.say h2 { color: var(--say); } section.no h2 { color: var(--no); }
+  section.top { border: 2px solid var(--head); grid-column: 1 / -1; }
+  ul { margin: 0; padding-left: 18px; }
+  li { margin: 1px 0; }
+  b { color: #000; }
+  .formula { display: inline-block; background: #f1f4f9; border-radius: 3px; padding: 0 5px; }
+  .note { color: var(--muted); font-size: 11px; margin-top: 10px; }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    body { font-size: 11px; }
+    .page { padding: 0; max-width: none; }
+    .grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    section { padding: 5px 9px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>醫事放射組｜選手速記卡</h1>
+  <p class="sub">NCMEA 擬真情境類競賽・醫事放射組第二場（2026/10/31，林口長庚）</p>
+
+  <div class="grid">
+    <section class="top">
+      <h2>最重要的三件事</h2>
+      <ul>
+        <li><b>進場先看控制台螢幕</b>：必要資訊都在畫面上，不要只看檢查單。</li>
+        <li><b>配合情境導演進出情境</b>：拖延造成情境遲滯，團隊自行承擔評分影響。</li>
+        <li><b>溫和對待模擬人</b>：損壞會影響其他隊伍。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>控制台三系統：看什麼</h2>
+      <ul>
+        <li><b>CT 系統</b>：核對姓名、出生日期、病歷號（對手圈、檢查單）；確認部位、是否打顯影劑。</li>
+        <li><b>PACS</b>：拍完、掃完一定回來看影像；危急或異常發現（氣胸、右位心）<b>立刻通報醫師</b>；需要時對照舊片。</li>
+        <li><b>檢驗系統</b>：打顯影劑前查 <b>Creatinine、eGFR</b>；糖尿病人看<b>血糖、Metformin</b>；口述抽血後，報告會視時機出現，記得回來查。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>電話與急救</h2>
+      <ul>
+        <li>用<b>控制台檯面上的手機</b>，選快捷撥號（醫師、檢查室），<b>實際撥出</b>；通話中就稍候再撥。</li>
+        <li>急救：快捷撥號 <b>999</b>，實際撥出，說出<b>地點＋情境資訊</b>。</li>
+        <li>叫叫 CABD：叫喚 → 叫人（999）→ 壓胸 → 打開呼吸道 → 通氣 → 電擊。</li>
+        <li>交班用 <b>ISBAR</b>：身分、現況、經過、已做處置、建議。</li>
+      </ul>
+    </section>
+
+    <section class="do">
+      <h2>✅ 一定要實際做</h2>
+      <ul>
+        <li>壓胸、摸脈搏、通氣給氧、插管（模擬人會記錄給裁判）。</li>
+        <li>聽診、視診、觸診、叩診的動作，<b>問題要具體</b>：「兩側呼吸起伏對稱嗎？」，不要問「病人有休克嗎？」。</li>
+        <li>綁血壓計、血氧機夾在正確位置、超音波探頭擺到要看的位置。</li>
+        <li>GCS 評估做出疼痛刺激。</li>
+        <li>點滴要掛上點滴架，並黏貼在模擬人身上。</li>
+        <li>手套依實際臨床方式穿戴。</li>
+      </ul>
+    </section>
+
+    <section class="say">
+      <h2>💬 只要口述</h2>
+      <ul>
+        <li>醫囑、護理紀錄、給藥紀錄（不用寫）。</li>
+        <li>護目鏡、面罩、隔離衣等防護裝備。</li>
+        <li>開氧氣：接好衛材，做出轉閥動作，說「<b>已開啟閥門</b>」。</li>
+        <li>放射設備：升床、進床、對雷射、歸零、打角度、調 collimator。</li>
+        <li>吸氣、閉氣：直接口頭指示病人。</li>
+        <li>抽血、備血、其他檢查：<b>說出項目</b>。</li>
+        <li>電擊：<b>說出設定值</b>，再隔空放電。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>給藥、輸液口述公式</h2>
+      <ul>
+        <li>給藥：<span class="formula">藥名＋劑量＋途徑</span>，拿空針（不拆包裝）走到病人旁示意。</li>
+        <li>輸液、輸血：<span class="formula">品名＋種類＋數量＋滴速</span>。</li>
+        <li>競賽物品一律視為新品，<b>不用檢查效期與包裝</b>。</li>
+        <li>找不到東西就直接問現場導演。</li>
+      </ul>
+    </section>
+
+    <section class="no">
+      <h2>⛔ 絕對不要做</h2>
+      <ul>
+        <li>移除模擬人身上的 <b>ECG 電極貼片</b>。</li>
+        <li>調整病床、推床高度。</li>
+        <li>掀開床單。</li>
+        <li>打開輸液管路的 <b>lock</b>。</li>
+        <li>拆空針包裝。</li>
+        <li>拖延進出情境、粗暴對待模擬人。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>現場設備</h2>
+      <ul>
+        <li>模擬人 <b>Gaumard S1000</b>：可自行接或拔胸前三導程心電圖導線，但貼片不能拔。</li>
+        <li>生理監視器：<b>Philips IntelliVue MX450</b> 或 <b>Mindray BeneVision N15</b>。</li>
+        <li>考場：模擬教室(一)、(二)，檢查室 A／B，哪間是 CT 要到現場確認。</li>
+      </ul>
+    </section>
+  </div>
+
+  <p class="note">整理自另一支參賽隊伍的公開備賽網站，內容轉述自官方《擬真情境類競賽參賽注意事項說明》。三系統「要看什麼」是該隊依教案整理的建議，官方只說明畫面會呈現必要資訊。一切以官方說明與現場導演為準。</p>
+</div>
+</body>
+</html>

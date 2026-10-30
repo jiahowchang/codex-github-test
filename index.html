@@ -115,6 +115,9 @@ const patients = {
   // 教案：CT 室雙病人（A 床門診氣胸、B 床加護病房插管病人）
   '10066188': { name: '黃柏翰', sex: 'M', dob: '2004-08-17', allergy: '無' },
   '10071345': { name: '周國華', sex: 'M', dob: '1957-04-09', allergy: '無' },
+  // 糖尿病服用 Metformin（打顯影劑前須注意血糖、腎功能與用藥）；右位心（PACS 危急／異常發現須通報）
+  '10083627': { name: '李金鳳', sex: 'F', dob: '1955-02-14', allergy: '無', meds: 'Metformin 500 mg BID、Glimepiride 2 mg QD' },
+  '10090412': { name: '吳俊傑', sex: 'M', dob: '1980-06-21', allergy: '無' },
 };
 
 const orders = [
@@ -125,6 +128,7 @@ const orders = [
   { chart: '10052003', exam: 'Chest CT', region: 'chest', contrast: true, dept: '心臟血管內科', dx: '胸痛 r/o 主動脈剝離' },
   { chart: '10071345', exam: 'Chest+Abdomen+Pelvis CT', region: 'cap', contrast: true, dept: '內科加護病房', dx: '疑似腹內感染之敗血性休克，找感染源',
     time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）' },
+  { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00' },
 ].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: o.time || `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
 
 // 項目: [名稱, 單位, 下限, 上限]
@@ -133,6 +137,7 @@ const labDefs = {
   NA: ['Na', 'mmol/L', 136, 145], K: ['K', 'mmol/L', 3.5, 5.1], WBC: ['WBC', '10³/µL', 4.0, 10.0],
   HB: ['Hb', 'g/dL', 12, 16], PLT: ['PLT', '10³/µL', 150, 400], HCG: ['β-hCG (血清)', 'mIU/mL', null, 5],
   LAC: ['Lactate', 'mmol/L', 0.5, 2.2],
+  GLU: ['Glucose (AC)', 'mg/dL', 70, 100], HBA1C: ['HbA1c', '%', 4.0, 5.6],
 };
 const labs = {
   '10023456': [{ date: daysAgo(3), dept: '胸腔內科', v: { CRE: 0.98, EGFR: 82, BUN: 15, NA: 140, K: 4.1, WBC: 6.2, HB: 14.1, PLT: 230 } }],
@@ -144,13 +149,18 @@ const labs = {
   ],
   '10052003': [{ date: daysAgo(1), dept: '心臟血管內科', v: { CRE: 0.85, EGFR: 79, NA: 141, K: 4.0, HB: 12.9, PLT: 250, HCG: '<2' } }],
   '10071345': [{ date: todayStr, dept: '內科加護病房', v: { CRE: 2.4, EGFR: 26, WBC: 18.2, LAC: 3.4 } }],
+  '10083627': [
+    { date: todayStr, dept: '一般內科', v: { GLU: 286, CRE: 1.32, EGFR: 41, BUN: 24, NA: 135, K: 4.6, WBC: 7.8, HB: 11.6, PLT: 215 } },
+    { date: daysAgo(90), dept: '新陳代謝科', v: { GLU: 198, HBA1C: 9.1, CRE: 1.18, EGFR: 47 } },
+  ],
 };
 
 const studies = [
   { acc: 'CT20250918007', chart: '10023456', date: daysAgo(380), desc: 'Chest CT (C+)', region: 'chest', contrast: true },
   { acc: 'CT20240311015', chart: '10045519', date: daysAgo(560), desc: 'Abdomen CT (C-)', region: 'abdomen', contrast: false },
   { acc: 'CT20231102004', chart: '10052003', date: daysAgo(1080), desc: 'Chest CT (C-)', region: 'chest', contrast: false },
-  { acc: `XR${accDay}017`, chart: '10066188', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR' },
+  { acc: `XR${accDay}017`, chart: '10066188', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'ptx' },
+  { acc: `XR${accDay}021`, chart: '10090412', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'dextro' },
 ];
 
 // ===== 狀態與路由 =====
@@ -207,6 +217,7 @@ function ctDetail(o) {
       <b>姓名</b><span>${p.name}</span><b>病歷號</b><span>${o.chart}</span>
       <b>性別/年齡</b><span>${sexAge(p)}</span><b>出生日期</b><span>${p.dob}</span>
       <b>過敏史</b><span class="${p.allergy === '無' ? '' : 'red'}">${p.allergy}</span>
+      <b>目前用藥</b><span>${p.meds || '無'}</span>
       <b>開單科別</b><span>${o.dept}</span><b>臨床診斷</b><span>${o.dx}</span>
       <b>檢查項目</b><span>${o.exam}（${o.contrast ? '含顯影劑' : '不含顯影劑'}）</span>
       ${o.cond ? `<b>病人狀態</b><span class="red">${o.cond}</span>` : ''}
@@ -305,7 +316,7 @@ const presets = {
 const inEl = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
 
 // 產生合成 CT 切面（HU 值）
-function makeSlice(region, contrast, k) {
+function makeSlice(region, contrast, k, find) {
   const a = new Float32Array(N * N), t = k / Math.max(1, totalOf(region) - 1);
   let seed = k * 9973 + 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -317,20 +328,20 @@ function makeSlice(region, contrast, k) {
     const x = (i - N / 2) / (N / 2), y = (j - N / 2) / (N / 2);
     let v = -1000;
     if (reg === 'cxr') {
-      // 胸部 X 光 PA（數值越高越白）：左側氣胸，影像右側為病人左側
+      // 胸部 X 光 PA（數值越高越白）：find 為 'ptx' 時左側氣胸、'dextro' 時右位心；影像右側為病人左側
       v = 0;
       if (inEl(x, y, 0, 0.35, 0.9, 1.1) || (Math.abs(x) < 0.18 && y < -0.5)) v = 600;
       const inR = inEl(x, y, -0.38, 0, 0.3, 0.6), inL = inEl(x, y, 0.38, 0, 0.3, 0.6);
-      const lungL = inEl(x, y, 0.33, 0.08, 0.19, 0.48);
+      const lungL = find !== 'ptx' || inEl(x, y, 0.33, 0.08, 0.19, 0.48);
       if (inR || (inL && lungL)) {
         const hx = inR ? -0.15 : 0.15, d = Math.hypot(x - hx, y);
         v = 200 + 90 * Math.max(0, Math.cos(Math.atan2(y, x - hx) * 30)) ** 10 * Math.max(0, 1 - d / 0.55);
       } else if (inL) v = 70;
-      if (inL && !lungL && inEl(x, y, 0.33, 0.08, 0.2, 0.495)) v = 330;
+      if (find === 'ptx' && inL && !lungL && inEl(x, y, 0.33, 0.08, 0.2, 0.495)) v = 330;
       if ((inR || inL) && Math.sin((y + 0.3 * x * x) * 28) > 0.85) v += 120;
       if (Math.abs(y - (-0.55 + 0.15 * Math.abs(x))) < 0.03 && Math.abs(x) < 0.6) v = 850;
       if (Math.abs(x) < 0.12 && y < 0.3) v = 750;
-      if (inEl(x, y, 0.1, 0.3, 0.32, 0.25)) v = 720;
+      if (inEl(x, y, find === 'dextro' ? -0.1 : 0.1, 0.3, 0.32, 0.25)) v = 720;
       if (Math.abs(x) < 0.06 && v >= 600) v += 80;
       a[j * N + i] = v + (rnd() - 0.5) * 20;
       continue;
@@ -394,7 +405,7 @@ function renderViewer(st) {
   const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
   const off = document.createElement('canvas'); off.width = off.height = N;
   const octx = off.getContext('2d'), img = octx.createImageData(N, N);
-  const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k));
+  const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k, st.find));
   document.getElementById('tl').textContent = `${p.name}\n${st.chart}\n${sexAge(p)}`;
   document.getElementById('tr').textContent = `模擬醫院\n${st.date}\n${st.acc}\n${st.desc}`;
   function draw() {
