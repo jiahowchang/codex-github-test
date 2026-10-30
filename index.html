@@ -126,19 +126,21 @@ const patients = {
   '10112754': { name: '陳建弘', sex: 'M', dob: '1958-05-20', allergy: '無' },
 };
 
+// 使用者提供的真實腹部骨盆 CT（由上而下 01→05）；所有腹部類 CT 醫囑掃描後都顯示這一組
+const CT_AP = ['images/b_ct_01.png', 'images/b_ct_02.png', 'images/b_ct_03.png', 'images/b_ct_04.png', 'images/b_ct_05.png'];
 const orders = [
   { chart: '10023456', exam: 'Chest CT', region: 'chest', contrast: true, dept: '胸腔內科', dx: '右上肺結節追蹤' },
   { chart: '10023457', exam: 'Brain CT', region: 'brain', contrast: false, dept: '急診醫學科', dx: '頭部外傷，意識改變' },
-  { chart: '10031822', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般外科', dx: '右下腹痛 r/o 闌尾炎' },
-  { chart: '10045519', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '無痛性血尿' },
+  { chart: '10031822', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般外科', dx: '右下腹痛 r/o 闌尾炎', imgs: CT_AP },
+  { chart: '10045519', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '無痛性血尿', imgs: CT_AP },
   { chart: '10052003', exam: 'Chest CT', region: 'chest', contrast: true, dept: '心臟血管內科', dx: '胸痛 r/o 主動脈剝離' },
   { chart: '10071345', exam: 'Chest+Abdomen+Pelvis CT', region: 'cap', contrast: true, dept: '內科加護病房', dx: '疑似腹內感染之敗血性休克，找感染源',
     time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）' },
-  { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00' },
+  { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00', imgs: CT_AP },
   { chart: '10112745', exam: 'Abdomen+Pelvis CT', region: 'abdomen', site: '腹部＋骨盆', contrast: true, dept: '急診醫學科', dx: '機車車禍多重創傷，左上腹及骨盆壓痛，r/o 腹內出血',
     time: 'STAT', urgent: true, scanSec: 60, find: 'trauma', cond: '創傷病人，頸圈固定中，急診護理師陪同',
-    imgs: ['images/b_ct_01.png', 'images/b_ct_02.png', 'images/b_ct_03.png', 'images/b_ct_04.png', 'images/b_ct_05.png'] },
-  { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30' },
+    imgs: CT_AP },
+  { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30', imgs: CT_AP },
 ].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: o.time || `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
 
 // 項目: [名稱, 單位, 下限, 上限]
@@ -230,8 +232,8 @@ function renderCT() {
 function scanImages(o) {
   const st = studies.find(s => s.acc === o.acc);
   if (!st) return '';
-  const n = st.imgs ? st.imgs.length : (st.n || totalOf(st.region));
-  return `<div class="card"><h2>掃描影像 <span class="muted">${n} 張，已傳送至 PACS</span></h2>
+  const n = st.imgs ? st.imgs.length : (SYNTHETIC ? (st.n || totalOf(st.region)) : 0);
+  return `<div class="card"><h2>掃描影像 <span class="muted">${n ? n + ' 張，已傳送至 PACS' : '尚無真實影像檔（此醫囑未指定影像）'}</span></h2>
     <div class="row" style="align-items:center">
       ${st.imgs ? st.imgs.slice(0, 6).map(u => `<img src="${u}" alt="" style="height:96px;border:1px solid #333;background:#000" onerror="this.remove()">`).join('') : ''}
       <button class="btn primary" id="viewimg">檢視影像</button>
@@ -322,7 +324,7 @@ function renderPACS() {
     <div class="card"><table>
       <tr><th>檢查日期</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>Modality</th><th>檢查描述</th><th>影像數</th></tr>
       ${list.map(s => { const p = patients[s.chart]; return `<tr class="click" data-acc="${s.acc}">
-        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.imgs ? s.imgs.length : (s.n || totalOf(s.region))}</td></tr>`; }).join('')
+        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.imgs ? s.imgs.length : (SYNTHETIC ? (s.n || totalOf(s.region)) : '—')}</td></tr>`; }).join('')
         || '<tr><td colspan="8" class="muted">查無影像</td></tr>'}
     </table><p class="muted">點選檢查以開啟影像。</p></div></div>`;
   const search = () => { S.pacsQ = document.getElementById('q').value; renderPACS(); };
@@ -333,6 +335,7 @@ function renderPACS() {
   });
 }
 
+const SYNTHETIC = false;   // true 才會在沒有真實影像檔時改畫合成影像；依使用者要求預設關閉
 const N = 256, NSLICE = 40;
 const totalOf = region => ({ cap: 60, cxr: 1 })[region] || NSLICE;
 const presets = {
@@ -422,9 +425,9 @@ function makeSlice(region, contrast, k, find) {
 
 function renderViewer(st, back) {
   const p = patients[st.chart];
-  const imgs = st.imgs || null;   // 真實影像檔（JPG/PNG 路徑陣列）；沒有就用合成影像
-  const ps = imgs ? presets.img : presets[st.region];
-  const ns = imgs ? imgs.length : (st.n || totalOf(st.region));
+  const imgs = st.imgs || null;   // 真實影像檔（JPG/PNG 路徑陣列）
+  const ps = imgs || !SYNTHETIC ? presets.img : presets[st.region];
+  const ns = imgs ? imgs.length : (SYNTHETIC ? (st.n || totalOf(st.region)) : 1);
   const V = { k: Math.floor(ns / 2), wl: ps[0][1], ww: ps[0][2], inv: false, flip: !!st.flip, zoom: 1, cache: {}, hu: '' };
   main.innerHTML = `<div class="viewer">
     <div class="vbar">
@@ -460,23 +463,29 @@ function renderViewer(st, back) {
     ctx.drawImage(src, (512 - dw) / 2, (512 - dh) / 2, dw, dh);
     ctx.restore();
     const flipped = V.flip !== !!st.flip;   // 只標示使用者自己按的翻轉；送來就反的影像不給提示
-    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\n${st.mod || imgs ? '' : 'Thk: 5.0 mm\n'}Zoom: ${V.zoom.toFixed(1)}x${V.hu}${st.fallback ? '\n(影像檔遺失，顯示合成影像)' : ''}`;
+    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\n${st.mod || imgs ? '' : 'Thk: 5.0 mm\n'}Zoom: ${V.zoom.toFixed(1)}x${V.hu}`;
     document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}${flipped ? '\nFLIP H' : ''}`;
+  }
+  // 沒有真實影像檔：只顯示提示，不畫合成影像
+  function noImage(t) {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = '#ffd76a'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(t, 256, 246); ctx.fillText('請將真實影像檔放入 images/ 資料夾後重新整理', 256, 276); ctx.textAlign = 'left';
+    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\nZoom: ${V.zoom.toFixed(1)}x`;
+    document.getElementById('br').textContent = '';
   }
   function draw() {
     const lo = V.wl - V.ww / 2;
     cv.style.filter = '';
     if (imgs) return loadImg(V.k, im => {
-      if (!im) {
-        if (st.region) { log(`PACS 影像檔載入失敗 ${imgs[V.k]}，改用合成影像`); return renderViewer({ ...st, imgs: null, fallback: true }, back); }
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512); ctx.fillStyle = '#ffd76a'; ctx.font = '15px monospace'; ctx.fillText('影像載入失敗：' + imgs[V.k], 20, 256); return;
-      }
+      if (!im) { if (!V.warned) { V.warned = true; log(`PACS 影像檔尚未上傳 ${imgs[V.k]}`); } return noImage('影像檔尚未上傳：' + imgs[V.k]); }
       // 真實影像不讀取像素（本機以 file:// 開啟時瀏覽器會擋 getImageData），W/L 與反相改用 CSS filter：
       // 先 contrast 再 brightness，等同 g' = (g - lo) / ww * 255
       paint(im, im.naturalWidth, im.naturalHeight);
       const l = Math.min(120, lo), c = 128 / (128 - l), bgt = Math.min(50, 255 / (V.ww * c));
       cv.style.filter = `grayscale(1) contrast(${c.toFixed(3)}) brightness(${bgt.toFixed(3)})${V.inv ? ' invert(1)' : ''}`;
     });
+    if (!SYNTHETIC) return noImage('此檢查尚無真實影像檔');
     const a = slice();
     for (let n = 0; n < N * N; n++) {
       const g = win((a[n] - lo) / V.ww * 255);
