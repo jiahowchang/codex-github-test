@@ -100,6 +100,7 @@ const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const daysAgo = n => { const d = new Date(today); d.setDate(d.getDate() - n); return ymd(d); };
 const todayStr = ymd(today);
 const accDay = todayStr.replace(/-/g, '');
+const lastYear = ymd(new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()));  // 去年同月同日
 function age(dob) {
   const b = new Date(dob); let a = today.getFullYear() - b.getFullYear();
   if (today.getMonth() < b.getMonth() || (today.getMonth() === b.getMonth() && today.getDate() < b.getDate())) a--;
@@ -118,6 +119,11 @@ const patients = {
   // 糖尿病服用 Metformin（打顯影劑前須注意血糖、腎功能與用藥）；右位心（PACS 危急／異常發現須通報）
   '10083627': { name: '李金鳳', sex: 'F', dob: '1955-02-14', allergy: '無', meds: 'Metformin 500 mg BID、Glimepiride 2 mg QD' },
   '10090412': { name: '吳俊傑', sex: 'M', dob: '1980-06-21', allergy: '無' },
+  // 教案：氣胸 X 光與創傷 CT 雙病人（A 床林俊宏、B 床陳建宏），以及音近字近、病歷號尾數對調的干擾病人
+  '10098231': { name: '林俊宏', sex: 'M', dob: '1994-07-22', allergy: '無' },
+  '10098213': { name: '林峻宏', sex: 'M', dob: '1994-02-11', allergy: '無' },
+  '10112745': { name: '陳建宏', sex: 'M', dob: '1966-11-03', allergy: '無', meds: 'Metformin 850 mg BID（新陳代謝科，慢性連續處方，最近領藥 2 週前）、Glimepiride 2 mg QD、Amlodipine 5 mg QD、Atorvastatin 20 mg QD' },
+  '10112754': { name: '陳建弘', sex: 'M', dob: '1958-05-20', allergy: '無' },
 };
 
 const orders = [
@@ -129,6 +135,9 @@ const orders = [
   { chart: '10071345', exam: 'Chest+Abdomen+Pelvis CT', region: 'cap', contrast: true, dept: '內科加護病房', dx: '疑似腹內感染之敗血性休克，找感染源',
     time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）' },
   { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00' },
+  { chart: '10112745', exam: 'Abdomen+Pelvis CT', region: 'abdomen', site: '腹部＋骨盆', contrast: true, dept: '急診醫學科', dx: '機車車禍多重創傷，左上腹及骨盆壓痛，r/o 腹內出血',
+    time: 'STAT', urgent: true, scanSec: 60, find: 'trauma', cond: '創傷病人，頸圈固定中，急診護理師陪同' },
+  { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30' },
 ].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: o.time || `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
 
 // 項目: [名稱, 單位, 下限, 上限]
@@ -153,6 +162,12 @@ const labs = {
     { date: todayStr, dept: '一般內科', v: { GLU: 286, CRE: 1.32, EGFR: 41, BUN: 24, NA: 135, K: 4.6, WBC: 7.8, HB: 11.6, PLT: 215 } },
     { date: daysAgo(90), dept: '新陳代謝科', v: { GLU: 198, HBA1C: 9.1, CRE: 1.18, EGFR: 47 } },
   ],
+  '10098213': [{ date: todayStr, dept: '健康管理中心', v: { WBC: 6.1, HB: 15.2, PLT: 245, CRE: 0.88, EGFR: 108, GLU: 92 } }],
+  '10112745': [
+    { date: todayStr, dept: '急診醫學科', v: { CRE: 2.68, EGFR: 24, BUN: 41, GLU: 268, NA: 137, K: 5.2, WBC: 14.2, HB: 10.4, PLT: 168, LAC: 3.1 } },
+    { date: lastYear, dept: '新陳代謝科', v: { CRE: 0.92, EGFR: 88, BUN: 14, GLU: 146, HBA1C: 7.4, NA: 140, K: 4.3, WBC: 6.8, HB: 14.6, PLT: 236 } },
+  ],
+  '10112754': [{ date: todayStr, dept: '泌尿科', v: { CRE: 0.95, EGFR: 84, GLU: 102, NA: 139, K: 4.0 } }],
 };
 
 const studies = [
@@ -161,10 +176,15 @@ const studies = [
   { acc: 'CT20231102004', chart: '10052003', date: daysAgo(1080), desc: 'Chest CT (C-)', region: 'chest', contrast: false },
   { acc: `XR${accDay}017`, chart: '10066188', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'ptx' },
   { acc: `XR${accDay}021`, chart: '10090412', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'dextro' },
+  // 教案：A 床林俊宏今日左側氣胸且影像左右顛倒（flip）、去年同月同日正常；干擾病人林峻宏今日正常
+  // 真實影像到位後，在 studies 加 imgs: ['images/檔名.jpg', ...] 即改用影像檔顯示
+  { acc: `XR${accDay}031`, chart: '10098231', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'ptx', flip: true },
+  { acc: `XR${lastYear.replace(/-/g, '')}118`, chart: '10098231', date: lastYear, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR' },
+  { acc: `XR${accDay}027`, chart: '10098213', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR' },
 ];
 
 // ===== 狀態與路由 =====
-const S = { view: 'home', ctSel: null, pacsQ: '', study: null, labQ: '', labChart: null, log: [] };
+const S = { view: 'home', ctSel: null, pacsQ: '', study: null, labQ: '', labChart: null, labRep: null, log: [] };
 const main = document.getElementById('main');
 const log = msg => S.log.unshift(`${new Date().toLocaleTimeString('zh-TW', { hour12: false })}  ${msg}`);
 const pLabel = c => `${patients[c].name}（${c}）`;
@@ -195,8 +215,8 @@ function renderCT() {
     <h1>電腦斷層掃描系統 <span class="muted">工作清單 ${todayStr}</span></h1>
     <div class="card"><table>
       <tr><th>時間</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>檢查項目</th><th>顯影劑</th><th>開單科別</th><th>狀態</th></tr>
-      ${orders.map(x => { const p = patients[x.chart]; return `<tr class="click ${x.acc === S.ctSel ? 'sel' : ''}" data-acc="${x.acc}">
-        <td>${x.time}</td><td>${x.acc}</td><td>${x.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${x.exam}</td>
+      ${[...orders].sort((a, b) => !!b.urgent - !!a.urgent).map(x => { const p = patients[x.chart]; return `<tr class="click ${x.acc === S.ctSel ? 'sel' : ''}" data-acc="${x.acc}">
+        <td class="${x.urgent ? 'red' : ''}">${x.time}</td><td>${x.acc}</td><td>${x.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${x.exam}</td>
         <td>${x.contrast ? '有' : '無'}</td><td>${x.dept}</td><td>${statusTag(x.status)}</td></tr>`; }).join('')}
     </table></div>
     ${o ? ctDetail(o) : '<p class="muted">請點選工作清單中的檢查。</p>'}
@@ -217,7 +237,6 @@ function ctDetail(o) {
       <b>姓名</b><span>${p.name}</span><b>病歷號</b><span>${o.chart}</span>
       <b>性別/年齡</b><span>${sexAge(p)}</span><b>出生日期</b><span>${p.dob}</span>
       <b>過敏史</b><span class="${p.allergy === '無' ? '' : 'red'}">${p.allergy}</span>
-      <b>目前用藥</b><span>${p.meds || '無'}</span>
       <b>開單科別</b><span>${o.dept}</span><b>臨床診斷</b><span>${o.dx}</span>
       <b>檢查項目</b><span>${o.exam}（${o.contrast ? '含顯影劑' : '不含顯影劑'}）</span>
       ${o.cond ? `<b>病人狀態</b><span class="red">${o.cond}</span>` : ''}
@@ -227,7 +246,7 @@ function ctDetail(o) {
       ${checkItems.map((t, i) => `<label><input type="checkbox" class="chk" ${locked ? 'checked disabled' : ''}> ${t}</label>`).join('')}
     </div></div>
     <div class="card grow"><h2>掃描參數</h2><div class="kv">
-      <b>掃描部位</b><span>${{ chest: '胸部', brain: '頭部', abdomen: '腹部', cap: '胸部＋腹部＋骨盆' }[o.region]}</span>
+      <b>掃描部位</b><span>${o.site || { chest: '胸部', brain: '頭部', abdomen: '腹部', cap: '胸部＋腹部＋骨盆' }[o.region]}</span>
       <b>顯影劑</b><span><label><input type="checkbox" id="useC" ${o.contrast ? 'checked' : ''} ${locked ? 'disabled' : ''}> 注射含碘顯影劑</label></span>
       <b>kVp</b><span><select id="kvp" ${locked ? 'disabled' : ''}>${[80, 100, 120, 140].map(v => `<option ${v === 120 ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
       <b>mA</b><span><select ${locked ? 'disabled' : ''}><option>Auto mA</option><option>200</option><option>300</option></select></span>
@@ -261,7 +280,7 @@ function bindCT(o) {
     const bar = document.getElementById('bar'), msg = document.getElementById('msg');
     const abort = document.getElementById('abort');
     abort.hidden = false; abort.disabled = false;
-    const send = n => studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})${n ? '（中止，部分影像）' : ''}`, region: o.region, contrast: useC, n });
+    const send = n => studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})${n ? '（中止，部分影像）' : ''}`, region: o.region, contrast: useC, n, find: o.find });
     o.pct = 0;
     const timer = setInterval(() => {
       o.pct++; bar.style.width = o.pct + '%'; msg.textContent = `掃描中… ${o.pct}%`;
@@ -296,7 +315,7 @@ function renderPACS() {
     <div class="card"><table>
       <tr><th>檢查日期</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>Modality</th><th>檢查描述</th><th>影像數</th></tr>
       ${list.map(s => { const p = patients[s.chart]; return `<tr class="click" data-acc="${s.acc}">
-        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.n || totalOf(s.region)}</td></tr>`; }).join('')
+        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.n || (s.imgs ? s.imgs.length : totalOf(s.region))}</td></tr>`; }).join('')
         || '<tr><td colspan="8" class="muted">查無影像</td></tr>'}
     </table><p class="muted">點選檢查以開啟影像。</p></div></div>`;
   const search = () => { S.pacsQ = document.getElementById('q').value; renderPACS(); };
@@ -310,6 +329,7 @@ function renderPACS() {
 const N = 256, NSLICE = 40;
 const totalOf = region => ({ cap: 60, cxr: 1 })[region] || NSLICE;
 const presets = {
+  img: [['預設', 128, 256]],
   cxr: [['預設', 500, 1000]],
   cap: [['肺窗', -600, 1500], ['縱膈腔', 40, 400], ['腹部', 40, 400], ['骨窗', 400, 1800]],
  chest: [['肺窗', -600, 1500], ['縱膈腔', 40, 400], ['骨窗', 400, 1800]], abdomen: [['腹部', 40, 400], ['肝臟', 60, 160], ['骨窗', 400, 1800]], brain: [['腦窗', 40, 80], ['硬膜下', 75, 215], ['骨窗', 600, 2800]] };
@@ -368,6 +388,13 @@ function makeSlice(region, contrast, k, find) {
         if (inEl(x, y, 0.2, 0.3, 0.06, 0.06)) v = contrast ? 300 : 45;
       } else {
         if (inEl(x, y, -0.35, -0.02, 0.33 * s, 0.33 * s)) v = contrast ? 110 : 60;
+        if (find === 'trauma' && t < 0.55) {
+          // 創傷：脾臟撕裂傷（低密度裂隙）合併脾周、肝周腹腔積血
+          const sp = inEl(x, y, 0.42, -0.1, 0.16 * s, 0.2 * s);
+          if (!sp && inEl(x, y, 0.45, -0.1, 0.27 * s, 0.32 * s)) v = 62;
+          if (!inEl(x, y, -0.35, -0.02, 0.33 * s, 0.33 * s) && inEl(x, y, -0.4, -0.02, 0.4 * s, 0.4 * s) && x < -0.45) v = 62;
+          if (sp) v = Math.abs((x - 0.42) - 0.5 * (y + 0.1)) < 0.02 ? 30 : (contrast ? 105 : 50);
+        }
         if (region === 'cap') {
           // 右側橫膈下壓：上腹切面仍可見右側氣胸；肝下膿瘍（低密度、邊緣顯影）
           if (u < 0.15 && inEl(x, y, -0.5, -0.1, 0.28, 0.3)) v = -1000;
@@ -387,14 +414,16 @@ function makeSlice(region, contrast, k, find) {
 }
 
 function renderViewer(st) {
-  const p = patients[st.chart], ps = presets[st.region];
-  const ns = st.n || totalOf(st.region);
-  const V = { k: Math.floor(ns / 2), wl: ps[0][1], ww: ps[0][2], inv: false, zoom: 1, cache: {}, hu: '' };
+  const p = patients[st.chart];
+  const imgs = st.imgs || null;   // 真實影像檔（JPG/PNG 路徑陣列）；沒有就用合成影像
+  const ps = imgs ? presets.img : presets[st.region];
+  const ns = imgs ? imgs.length : (st.n || totalOf(st.region));
+  const V = { k: Math.floor(ns / 2), wl: ps[0][1], ww: ps[0][2], inv: false, flip: !!st.flip, zoom: 1, cache: {}, hu: '' };
   main.innerHTML = `<div class="viewer">
     <div class="vbar">
       <button id="back">← 返回清單</button>
       ${ps.map((x, i) => `<button data-p="${i}">${x[0]}</button>`).join('')}
-      <button id="inv">反相</button><button id="zin">放大</button><button id="zout">縮小</button><button id="rst">重設</button>
+      <button id="flip">左右翻轉</button><button id="inv">反相</button><button id="zin">放大</button><button id="zout">縮小</button><button id="rst">重設</button>
       <span>滾輪：切換切面　拖曳：調整 W/L　游標：顯示 HU</span>
     </div>
     <div class="vwrap"><canvas id="cv" width="512" height="512"></canvas>
@@ -406,37 +435,66 @@ function renderViewer(st) {
   const off = document.createElement('canvas'); off.width = off.height = N;
   const octx = off.getContext('2d'), img = octx.createImageData(N, N);
   const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k, st.find));
+  const loaded = {};
+  const loadImg = (k, cb) => {
+    if (loaded[k]) return cb(loaded[k]);
+    const im = new Image(); im.onload = () => { loaded[k] = im; cb(im); }; im.onerror = () => cb(null); im.src = imgs[k];
+  };
   document.getElementById('tl').textContent = `${p.name}\n${st.chart}\n${sexAge(p)}`;
   document.getElementById('tr').textContent = `模擬醫院\n${st.date}\n${st.acc}\n${st.desc}`;
+  const win = g => { g = Math.max(0, Math.min(255, g)); return V.inv ? 255 - g : g; };
+  // 把影像畫到畫面上；翻轉時連燒錄在影像上的標記一起鏡像，四角的 R/L 標籤不動（模擬影像送錯方向）
+  function paint(src, w, h) {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
+    ctx.imageSmoothingEnabled = true;
+    const sc = Math.min(512 / w, 512 / h) * V.zoom, dw = w * sc, dh = h * sc;
+    ctx.save();
+    if (V.flip) { ctx.translate(512, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(src, (512 - dw) / 2, (512 - dh) / 2, dw, dh);
+    ctx.restore();
+    const flipped = V.flip !== !!st.flip;   // 只標示使用者自己按的翻轉；送來就反的影像不給提示
+    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\n${st.mod || imgs ? '' : 'Thk: 5.0 mm\n'}Zoom: ${V.zoom.toFixed(1)}x${V.hu}`;
+    document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}${flipped ? '\nFLIP H' : ''}`;
+  }
   function draw() {
-    const a = slice(), lo = V.wl - V.ww / 2;
+    const lo = V.wl - V.ww / 2;
+    if (imgs) return loadImg(V.k, im => {
+      if (!im) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512); ctx.fillStyle = '#ffd76a'; ctx.font = '15px monospace'; ctx.fillText('影像載入失敗：' + imgs[V.k], 20, 256); return; }
+      const sc0 = Math.min(1, 1024 / Math.max(im.naturalWidth, im.naturalHeight));
+      const w = Math.round(im.naturalWidth * sc0), h = Math.round(im.naturalHeight * sc0);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cx = c.getContext('2d'); cx.drawImage(im, 0, 0, w, h);
+      const d = cx.getImageData(0, 0, w, h), q = d.data;
+      for (let n = 0; n < q.length; n += 4) { const g = win(((q[n] + q[n + 1] + q[n + 2]) / 3 - lo) / V.ww * 255); q[n] = q[n + 1] = q[n + 2] = g; }
+      cx.putImageData(d, 0, 0); paint(c, w, h);
+    });
+    const a = slice();
     for (let n = 0; n < N * N; n++) {
-      let g = Math.max(0, Math.min(255, (a[n] - lo) / V.ww * 255));
-      if (V.inv) g = 255 - g;
+      const g = win((a[n] - lo) / V.ww * 255);
       img.data[n * 4] = img.data[n * 4 + 1] = img.data[n * 4 + 2] = g; img.data[n * 4 + 3] = 255;
     }
     octx.putImageData(img, 0, 0);
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
-    ctx.imageSmoothingEnabled = true;
-    const sz = 512 * V.zoom; ctx.drawImage(off, (512 - sz) / 2, (512 - sz) / 2, sz, sz);
-    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\n${st.mod ? '' : 'Thk: 5.0 mm\n'}Zoom: ${V.zoom.toFixed(1)}x${V.hu}`;
-    document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}`;
+    // 合成 X 光的鉛字 L 標記（放在病人左側）；影像被翻轉時會跟著鏡像、字形反轉
+    if (st.mod === 'CR') { octx.fillStyle = V.inv ? '#000' : '#fff'; octx.font = 'bold 24px sans-serif'; octx.fillText('L', 226, 44); }
+    paint(off, N, N);
   }
   const setP = i => { V.wl = ps[i][1]; V.ww = ps[i][2]; draw(); };
   document.getElementById('back').onclick = () => { S.study = null; renderPACS(); };
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => setP(+b.dataset.p));
+  document.getElementById('flip').onclick = () => { V.flip = !V.flip; log(`PACS 左右翻轉 ${st.acc}`); draw(); };
   document.getElementById('inv').onclick = () => { V.inv = !V.inv; draw(); };
   document.getElementById('zin').onclick = () => { V.zoom = Math.min(4, V.zoom + 0.5); draw(); };
   document.getElementById('zout').onclick = () => { V.zoom = Math.max(1, V.zoom - 0.5); draw(); };
-  document.getElementById('rst').onclick = () => { V.inv = false; V.zoom = 1; setP(0); };
+  document.getElementById('rst').onclick = () => { V.inv = false; V.flip = !!st.flip; V.zoom = 1; setP(0); };
   cv.onwheel = e => { e.preventDefault(); V.k = Math.max(0, Math.min(ns - 1, V.k + Math.sign(e.deltaY))); draw(); };
   let drag = null;
   cv.onmousedown = e => drag = { x: e.clientX, y: e.clientY, wl: V.wl, ww: V.ww };
   window.onmouseup = () => drag = null;
   cv.onmousemove = e => {
     const r = cv.getBoundingClientRect(), sz = 512 * V.zoom;
-    const px = ((e.clientX - r.left) * 512 / r.width - (512 - sz) / 2) / sz * N, py = ((e.clientY - r.top) * 512 / r.height - (512 - sz) / 2) / sz * N;
-    V.hu = !st.mod && px >= 0 && py >= 0 && px < N && py < N ? `\nHU: ${Math.round(slice()[Math.floor(py) * N + Math.floor(px)])}` : '';
+    let px = ((e.clientX - r.left) * 512 / r.width - (512 - sz) / 2) / sz * N; const py = ((e.clientY - r.top) * 512 / r.height - (512 - sz) / 2) / sz * N;
+    if (V.flip) px = N - px;
+    V.hu = !st.mod && !imgs && px >= 0 && py >= 0 && px < N && py < N ? `\nHU: ${Math.round(slice()[Math.floor(py) * N + Math.floor(px)])}` : '';
     if (drag) { V.ww = Math.max(1, drag.ww + (e.clientX - drag.x) * 4); V.wl = drag.wl + (e.clientY - drag.y) * 2; }
     draw();
   };
@@ -449,6 +507,9 @@ function renderLab() {
   const hits = q ? Object.keys(patients).filter(c => c.includes(q) || patients[c].name.includes(q)) : [];
   if (hits.length === 1) S.labChart = hits[0];
   const c = S.labChart, p = c && patients[c];
+  const reps = c ? (labs[c] || []).slice().sort((a, b) => b.date.localeCompare(a.date)) : [];
+  const r = reps[S.labRep];
+  const flag = (k, v) => { const [, , lo, hi] = labDefs[k]; return typeof v === 'number' ? (lo != null && v < lo ? 'L' : hi != null && v > hi ? 'H' : '') : ''; };
   main.innerHTML = `<div class="page">
     <h1>檢驗報告查詢系統</h1>
     <div class="card row" style="align-items:center">
@@ -461,18 +522,24 @@ function renderLab() {
     </table></div>` : ''}
     ${p && hits.includes(c) ? `<div class="card"><div class="kv" style="grid-template-columns:70px 1fr 70px 1fr 70px 1fr">
       <b>姓名</b><span>${p.name}</span><b>病歷號</b><span>${c}</span><b>性別/年齡</b><span>${sexAge(p)}</span></div></div>
-      ${labs[c] ? '' : '<p class="muted">查無檢驗報告。</p>'}
-      ${(labs[c] || []).map(r => `<div class="card"><h2>採檢日期 ${r.date}　<span class="muted">${r.dept}</span></h2><table>
+      <div class="card"><h2>檢驗報告清單</h2>${reps.length ? `<table>
+        <tr><th>採檢日期</th><th>開單科別</th><th>檢驗項目</th><th>狀態</th></tr>
+        ${reps.map((x, i) => `<tr class="click ${i === S.labRep ? 'sel' : ''}" data-r="${i}"><td>${x.date}</td><td>${x.dept}</td><td>${Object.keys(x.v).map(k => labDefs[k][0]).join('、')}</td><td><span class="tag done">已報告</span></td></tr>`).join('')}
+      </table><p class="muted">點選報告以檢視結果。</p>` : '<p class="muted">查無檢驗報告。</p>'}</div>
+      ${r ? `<div class="card"><h2>採檢日期 ${r.date}　<span class="muted">${r.dept}</span></h2><table>
         <tr><th>檢驗項目</th><th>結果</th><th>單位</th><th>參考值</th><th>註記</th></tr>
-        ${Object.entries(r.v).map(([k, v]) => { const [nm, u, lo, hi] = labDefs[k]; const f = typeof v === 'number' ? (lo != null && v < lo ? 'L' : hi != null && v > hi ? 'H' : '') : '';
+        ${Object.entries(r.v).map(([k, v]) => { const [nm, u, lo, hi] = labDefs[k], f = flag(k, v);
           return `<tr><td>${nm}</td><td class="${f === 'H' ? 'red' : f === 'L' ? 'blue' : ''}">${v}</td><td>${u}</td>
           <td>${lo == null ? '< ' + hi : hi == null ? '≥ ' + lo : lo + ' – ' + hi}</td><td class="${f === 'H' ? 'red' : 'blue'}">${f}</td></tr>`; }).join('')}
-      </table></div>`).join('')}` : ''}
+      </table></div>` : ''}
+      <div class="card"><h2>雲端藥歷 <span class="muted">健保醫療資訊雲端查詢系統，近 3 個月</span></h2>
+        ${p.meds ? `<ul style="margin:0;padding-left:18px;font-size:14px">${p.meds.split('、').map(m => `<li>${m}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">近 3 個月無用藥紀錄。</p>'}</div>` : ''}
   </div>`;
-  const search = () => { S.labQ = document.getElementById('q').value; S.labChart = null; renderLab(); if (S.labChart) log(`查詢檢驗報告 ${pLabel(S.labChart)}`); };
+  const search = () => { S.labQ = document.getElementById('q').value; S.labChart = null; S.labRep = null; renderLab(); if (S.labChart) log(`查詢檢驗報告 ${pLabel(S.labChart)}`); };
   document.getElementById('go').onclick = search;
   document.getElementById('q').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) search(); };
-  main.querySelectorAll('tr[data-c]').forEach(tr => tr.onclick = () => { S.labChart = tr.dataset.c; log(`查詢檢驗報告 ${pLabel(S.labChart)}`); renderLab(); });
+  main.querySelectorAll('tr[data-c]').forEach(tr => tr.onclick = () => { S.labChart = tr.dataset.c; S.labRep = null; log(`查詢檢驗報告 ${pLabel(S.labChart)}`); renderLab(); });
+  main.querySelectorAll('tr[data-r]').forEach(tr => tr.onclick = () => { S.labRep = +tr.dataset.r; log(`開啟檢驗報告 ${pLabel(c)} 採檢日期 ${reps[S.labRep].date}`); renderLab(); });
 }
 
 go('home');
