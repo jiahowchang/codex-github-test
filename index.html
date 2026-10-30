@@ -92,6 +92,9 @@
   </div>
 </aside>
 <main id="main"></main>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="wl" color-interpolation-filters="sRGB"><feComponentTransfer>
+  <feFuncR id="wlR" type="linear" slope="1" intercept="0"/><feFuncG id="wlG" type="linear" slope="1" intercept="0"/><feFuncB id="wlB" type="linear" slope="1" intercept="0"/>
+</feComponentTransfer></filter></svg>
 
 <script>
 // ===== 模擬資料（皆為虛構） =====
@@ -141,7 +144,7 @@ const orders = [
     time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）', imgs: CT_AP, imgsNC: CT_AP_NC },
   { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00', imgs: CT_AP, imgsNC: CT_AP_NC },
   { chart: '10112745', exam: 'Abdomen+Pelvis CT', region: 'abdomen', site: '腹部＋骨盆', contrast: true, dept: '急診醫學科', dx: '機車車禍多重創傷，左上腹及骨盆壓痛，r/o 腹內出血',
-    time: 'STAT', urgent: true, scanSec: 60, find: 'trauma', cond: '創傷病人，頸圈固定中，急診護理師陪同', imgs: CT_AP, imgsNC: CT_AP_NC },
+    time: 'STAT', urgent: true, scanSec: 60, cond: '創傷病人，頸圈固定中，急診護理師陪同', imgs: CT_AP, imgsNC: CT_AP_NC },
   { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30', imgs: CT_AP, imgsNC: CT_AP_NC },
 ].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: o.time || `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
 
@@ -184,7 +187,7 @@ const studies = [
   { acc: `XR${accDay}021`, chart: '10090412', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', imgs: ['images/cxr_normal.png'] },
   // 教案：A 床林俊宏今日左側氣胸（真實影像 a_cxr_today.png，flip: true 由系統左右翻轉顯示：右下 R 標記反轉、心影在畫面左側）
   // 去年同月同日正常；干擾病人林峻宏今日正常。若改用本身已顛倒的影像檔，請設 flip: false
-  { acc: `XR${accDay}031`, chart: '10098231', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', find: 'ptx', flip: true, imgs: ['images/a_cxr_today.png'] },
+  { acc: `XR${accDay}031`, chart: '10098231', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', flip: true, imgs: ['images/a_cxr_today.png'] },
   { acc: `XR${lastYear.replace(/-/g, '')}118`, chart: '10098231', date: lastYear, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', imgs: ['images/cxr_normal.png'] },
   { acc: `XR${accDay}027`, chart: '10098213', date: todayStr, desc: 'Chest PA', region: 'cxr', contrast: false, mod: 'CR', imgs: ['images/cxr_normal.png'] },
 ];
@@ -234,7 +237,7 @@ function renderCT() {
 function scanImages(o) {
   const st = studies.find(s => s.acc === o.acc);
   if (!st) return '';
-  const n = st.imgs ? st.imgs.length : (SYNTHETIC ? (st.n || totalOf(st.region)) : 0);
+  const n = st.imgs ? st.imgs.length : 0;
   return `<div class="card"><h2>掃描影像 <span class="muted">${n ? n + ' 張，已傳送至 PACS' : '尚無真實影像檔（此醫囑未指定影像）'}</span></h2>
     <div class="row" style="align-items:center">
       ${st.imgs ? st.imgs.slice(0, 6).map(u => `<img src="${u}" alt="" style="height:96px;border:1px solid #333;background:#000" onerror="this.remove()">`).join('') : ''}
@@ -265,51 +268,51 @@ function ctDetail(o) {
     <div style="margin-top:10px;display:flex;gap:8px">
       <button class="btn primary" id="start" ${locked ? 'disabled' : ''}>開始掃描</button>
       <button class="btn warn" id="hold" ${locked ? 'disabled' : ''}>暫停檢查</button>
-      <button class="btn warn" id="abort" hidden>中止掃描</button>
+      <button class="btn warn" id="abort" ${o.status === '掃描中' ? '' : 'hidden'}>中止掃描</button>
     </div>
     <div class="progress"><div id="bar" style="width:${o.pct || 0}%"></div><span id="pct">${o.pct ? o.pct + '%' : ''}</span></div>
-    <div class="muted" id="msg">${{ 已完成: '掃描完成，影像已傳送至 PACS。', 中止: `掃描已於 ${o.pct}% 中止，已取得之影像已傳送至 PACS。` }[o.status] || ''}</div>
+    <div class="muted" id="msg">${{ 掃描中: `掃描中… ${o.pct}%`, 已完成: '掃描完成，影像已傳送至 PACS。', 中止: `掃描已於 ${o.pct}% 中止，${o.got ? '已取得之影像已傳送至 PACS。' : '未取得影像。'}` }[o.status] || ''}</div>
     </div></div>`;
 }
 const warn = t => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'red'; };
 function bindCT(o) {
+  if (o.status === '掃描中') { document.getElementById('abort').onclick = o.abort; return; }
   if (o.status !== '待檢查') return;
-  const start = document.getElementById('start');
   document.getElementById('hold').onclick = () => {
     const note = document.getElementById('note').value.trim();
     if (!note) return warn('請於備註填寫暫停原因。');
     o.status = '暫停'; o.note = note; log(`暫停檢查 ${o.acc}，原因：${note}`); renderCT();
   };
-  start.onclick = () => {
+  document.getElementById('start').onclick = () => {
     const useC = document.getElementById('useC').checked;
     if (useC !== o.contrast && !document.getElementById('note').value.trim()) return warn('顯影劑使用與醫囑不同，請於備註填寫原因。');
-    o.status = '掃描中'; o.useContrast = useC;
-    log(`開始掃描 ${o.acc}（${useC ? '含' : '不含'}顯影劑，${document.getElementById('kvp').value} kVp）`);
-    main.querySelectorAll('.card input, .card select, .card textarea, .card button.btn:not(#reset)').forEach(e => e.disabled = true);
-    const bar = document.getElementById('bar'), msg = document.getElementById('msg'), pct = document.getElementById('pct');
-    msg.className = 'muted';
-    const abort = document.getElementById('abort');
-    abort.hidden = false; abort.disabled = false;
-    const all = useC ? o.imgs : (o.imgsNC || o.imgs), total = all ? all.length : totalOf(o.region);
-    const send = n => studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})${n ? '（中止，部分影像）' : ''}`, region: o.region, contrast: useC, n, find: o.find,
+    const all = useC ? o.imgs : (o.imgsNC || o.imgs), total = all ? all.length : 0;
+    const send = n => studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})${n ? '（中止，部分影像）' : ''}`, region: o.region, contrast: useC,
       imgs: all && (n ? all.slice(0, n) : all) });
-    o.pct = 0;
+    log(`開始掃描 ${o.acc}（${useC ? '含' : '不含'}顯影劑，${document.getElementById('kvp').value} kVp）`);
+    o.status = '掃描中'; o.pct = 0;
+    // 進度存在醫囑上：切到別的系統再回來，進度條會接續顯示，也仍可中止
     const timer = setInterval(() => {
-      o.pct++; bar.style.width = o.pct + '%'; pct.textContent = o.pct + '%'; msg.textContent = `掃描中… ${o.pct}%`;
+      o.pct++;
+      const bar = document.getElementById('bar');
+      if (bar && S.view === 'ct' && S.ctSel === o.acc) {
+        bar.style.width = o.pct + '%'; document.getElementById('pct').textContent = o.pct + '%';
+        const m = document.getElementById('msg'); m.textContent = `掃描中… ${o.pct}%`; m.className = 'muted';
+      }
       if (o.pct < 100) return;
-      clearInterval(timer);
-      o.status = '已完成'; send();
+      clearInterval(timer); o.status = '已完成'; o.abort = null; send();
       log(`掃描完成 ${o.acc}，影像已傳送至 PACS`);
       if (S.view === 'ct') renderCT();
     }, (o.scanSec || 4) * 10);
-    abort.onclick = () => {
+    o.abort = () => {
       clearInterval(timer);
-      o.status = '中止';
       const n = Math.round(total * o.pct / 100);
+      o.status = '中止'; o.got = n; o.abort = null;
       if (n) send(n);
       log(`中止掃描 ${o.acc}（進度 ${o.pct}%，已取得 ${n} 張影像）`);
       if (S.view === 'ct') renderCT();
     };
+    renderCT();
   };
 }
 
@@ -327,7 +330,7 @@ function renderPACS() {
     <div class="card"><table>
       <tr><th>檢查日期</th><th>檢查單號</th><th>病歷號</th><th>姓名</th><th>性別/年齡</th><th>Modality</th><th>檢查描述</th><th>影像數</th></tr>
       ${list.map(s => { const p = patients[s.chart]; return `<tr class="click" data-acc="${s.acc}">
-        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.imgs ? s.imgs.length : (SYNTHETIC ? (s.n || totalOf(s.region)) : '—')}</td></tr>`; }).join('')
+        <td>${s.date}</td><td>${s.acc}</td><td>${s.chart}</td><td>${p.name}</td><td>${sexAge(p)}</td><td>${s.mod || 'CT'}</td><td>${s.desc}</td><td>${s.imgs ? s.imgs.length : '—'}</td></tr>`; }).join('')
         || '<tr><td colspan="8" class="muted">查無影像</td></tr>'}
     </table><p class="muted">點選檢查以開啟影像。</p></div></div>`;
   const search = () => { S.pacsQ = document.getElementById('q').value; renderPACS(); };
@@ -338,106 +341,20 @@ function renderPACS() {
   });
 }
 
-const SYNTHETIC = false;   // true 才會在沒有真實影像檔時改畫合成影像；依使用者要求預設關閉
-const N = 256, NSLICE = 40;
-const totalOf = region => ({ cap: 60, cxr: 1 })[region] || NSLICE;
-const presets = {
-  img: [['預設', 128, 256]],
-  cxr: [['預設', 500, 1000]],
-  cap: [['肺窗', -600, 1500], ['縱膈腔', 40, 400], ['腹部', 40, 400], ['骨窗', 400, 1800]],
- chest: [['肺窗', -600, 1500], ['縱膈腔', 40, 400], ['骨窗', 400, 1800]], abdomen: [['腹部', 40, 400], ['肝臟', 60, 160], ['骨窗', 400, 1800]], brain: [['腦窗', 40, 80], ['硬膜下', 75, 215], ['骨窗', 600, 2800]] };
-const inEl = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
-
-// 產生合成 CT 切面（HU 值）
-function makeSlice(region, contrast, k, find) {
-  const a = new Float32Array(N * N), t = k / Math.max(1, totalOf(region) - 1);
-  let seed = k * 9973 + 7;
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  // 胸腹骨盆 CT：前 45% 為胸部（右側張力性氣胸），其後為腹部（肝下膿瘍）
-  const reg = region === 'cap' ? (t < 0.45 ? 'ptx' : 'abdomen') : region;
-  const u = region === 'cap' ? (t < 0.45 ? t / 0.45 : (t - 0.45) / 0.55) : t;
-  const s = Math.sin(Math.PI * (0.15 + 0.7 * u));
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const x = (i - N / 2) / (N / 2), y = (j - N / 2) / (N / 2);
-    let v = -1000;
-    if (reg === 'cxr') {
-      // 胸部 X 光 PA（數值越高越白）：find 為 'ptx' 時左側氣胸、'dextro' 時右位心；影像右側為病人左側
-      v = 0;
-      if (inEl(x, y, 0, 0.35, 0.9, 1.1) || (Math.abs(x) < 0.18 && y < -0.5)) v = 600;
-      const inR = inEl(x, y, -0.38, 0, 0.3, 0.6), inL = inEl(x, y, 0.38, 0, 0.3, 0.6);
-      const lungL = find !== 'ptx' || inEl(x, y, 0.33, 0.08, 0.19, 0.48);
-      if (inR || (inL && lungL)) {
-        const hx = inR ? -0.15 : 0.15, d = Math.hypot(x - hx, y);
-        v = 200 + 90 * Math.max(0, Math.cos(Math.atan2(y, x - hx) * 30)) ** 10 * Math.max(0, 1 - d / 0.55);
-      } else if (inL) v = 70;
-      if (find === 'ptx' && inL && !lungL && inEl(x, y, 0.33, 0.08, 0.2, 0.495)) v = 330;
-      if ((inR || inL) && Math.sin((y + 0.3 * x * x) * 28) > 0.85) v += 120;
-      if (Math.abs(y - (-0.55 + 0.15 * Math.abs(x))) < 0.03 && Math.abs(x) < 0.6) v = 850;
-      if (Math.abs(x) < 0.12 && y < 0.3) v = 750;
-      if (inEl(x, y, find === 'dextro' ? -0.1 : 0.1, 0.3, 0.32, 0.25)) v = 720;
-      if (Math.abs(x) < 0.06 && v >= 600) v += 80;
-      a[j * N + i] = v + (rnd() - 0.5) * 20;
-      continue;
-    }
-    if (reg === 'brain') {
-      if (inEl(x, y, 0, 0, 0.72 * s, 0.88 * s)) v = 1000;
-      if (inEl(x, y, 0, 0, 0.66 * s, 0.82 * s)) v = 35;
-      if (t > 0.35 && t < 0.7 && (inEl(x, y, -0.1, -0.05, 0.06, 0.22) || inEl(x, y, 0.1, -0.05, 0.06, 0.22))) v = 5;
-    } else {
-      if (inEl(x, y, 0, 0.05, 0.85, 0.6)) v = -100;
-      if (inEl(x, y, 0, 0.05, 0.79, 0.54)) v = 40;
-      if (region === 'chest') {
-        const ls = 0.55 + 0.45 * Math.sin(Math.PI * t);
-        if (inEl(x, y, -0.38, 0, 0.28 * ls, 0.4 * ls) || inEl(x, y, 0.38, 0, 0.28 * ls, 0.4 * ls)) v = -850;
-        if (t > 0.4 && inEl(x, y, 0.08, 0.02, 0.22, 0.2)) v = contrast ? 160 : 40;
-        if (inEl(x, y, 0.1, 0.3, 0.06, 0.06)) v = contrast ? 300 : 45;
-      } else if (reg === 'ptx') {
-        // 右側張力性氣胸：右半胸（影像左側）充滿空氣無肺紋理、右肺塌陷於肺門，縱膈腔向左（影像右側）偏移
-        const ls = 0.55 + 0.45 * Math.sin(Math.PI * u);
-        if (inEl(x, y, -0.4, 0.02, 0.34, 0.43)) v = -1000;
-        if (inEl(x, y, -0.15, 0.05, 0.08 * ls, 0.12 * ls)) v = -450;
-        if (inEl(x, y, 0.47, 0, 0.2 * ls, 0.36 * ls)) v = -850;
-        if (u > 0.4 && inEl(x, y, 0.24, 0.04, 0.2, 0.18)) v = contrast ? 160 : 40;
-        if (inEl(x, y, 0.2, 0.3, 0.06, 0.06)) v = contrast ? 300 : 45;
-      } else {
-        if (inEl(x, y, -0.35, -0.02, 0.33 * s, 0.33 * s)) v = contrast ? 110 : 60;
-        if (find === 'trauma' && t < 0.55) {
-          // 創傷：脾臟撕裂傷（低密度裂隙）合併脾周、肝周腹腔積血
-          const sp = inEl(x, y, 0.42, -0.1, 0.16 * s, 0.2 * s);
-          if (!sp && inEl(x, y, 0.45, -0.1, 0.27 * s, 0.32 * s)) v = 62;
-          if (!inEl(x, y, -0.35, -0.02, 0.33 * s, 0.33 * s) && inEl(x, y, -0.4, -0.02, 0.4 * s, 0.4 * s) && x < -0.45) v = 62;
-          if (sp) v = Math.abs((x - 0.42) - 0.5 * (y + 0.1)) < 0.02 ? 30 : (contrast ? 105 : 50);
-        }
-        if (region === 'cap') {
-          // 右側橫膈下壓：上腹切面仍可見右側氣胸；肝下膿瘍（低密度、邊緣顯影）
-          if (u < 0.15 && inEl(x, y, -0.5, -0.1, 0.28, 0.3)) v = -1000;
-          if (u > 0.25 && u < 0.5 && inEl(x, y, -0.3, 0.14, 0.12, 0.1)) v = contrast ? 140 : 50;
-          if (u > 0.25 && u < 0.5 && inEl(x, y, -0.3, 0.14, 0.09, 0.075)) v = 15;
-        }
-        if (inEl(x, y, -0.32, 0.3, 0.1, 0.12) || inEl(x, y, 0.32, 0.3, 0.1, 0.12)) v = contrast ? 180 : 35;
-        if (inEl(x, y, 0.06, 0.28, 0.045, 0.045)) v = contrast ? 250 : 45;
-        for (let b = 0; b < 4; b++) if (inEl(x, y, 0.15 + 0.12 * Math.cos(b * 1.7 + t * 6), -0.15 + 0.1 * Math.sin(b * 2.3 + t * 5), 0.05, 0.04)) v = -900;
-      }
-      if (inEl(x, y, 0, 0.45, 0.1, 0.09)) v = 700;
-      if (inEl(x, y, 0, 0.45, 0.07, 0.06)) v = 250;
-    }
-    a[j * N + i] = v + (rnd() - 0.5) * 20;
-  }
-  return a;
-}
+// 檢視器只顯示真實影像檔；找不到檔案時只顯示提示文字，不產生任何合成影像
+const PRESETS = [['預設', 128, 256]];
 
 function renderViewer(st, back) {
   const p = patients[st.chart];
   const imgs = st.imgs || null;   // 真實影像檔（JPG/PNG 路徑陣列）
-  const ps = imgs || !SYNTHETIC ? presets.img : presets[st.region];
-  const ns = imgs ? imgs.length : (SYNTHETIC ? (st.n || totalOf(st.region)) : 1);
-  const V = { k: Math.floor(ns / 2), wl: ps[0][1], ww: ps[0][2], inv: false, flip: !!st.flip, zoom: 1, cache: {}, hu: '' };
+  const ns = imgs ? imgs.length : 1;
+  const V = { k: Math.floor(ns / 2), wl: PRESETS[0][1], ww: PRESETS[0][2], inv: false, flip: !!st.flip, zoom: 1 };
   main.innerHTML = `<div class="viewer">
     <div class="vbar">
       <button id="back">${back ? '← 返回掃描系統' : '← 返回清單'}</button>
-      ${ps.map((x, i) => `<button data-p="${i}">${x[0]}</button>`).join('')}
+      ${PRESETS.map((x, i) => `<button data-p="${i}">${x[0]}</button>`).join('')}
       <button id="flip">左右翻轉</button><button id="inv">反相</button><button id="zin">放大</button><button id="zout">縮小</button><button id="rst">重設</button>
-      <span>滾輪：切換切面　拖曳：調整 W/L　游標：顯示 HU</span>
+      <span>滾輪：切換切面　拖曳：調整 W/L</span>
     </div>
     <div class="vwrap"><canvas id="cv" width="512" height="512"></canvas>
       <div class="ov" id="tl" style="top:8px;left:12px"></div><div class="ov" id="tr" style="top:8px;right:12px;text-align:right"></div>
@@ -445,32 +362,37 @@ function renderViewer(st, back) {
       <div class="ov" style="top:50%;left:12px">R</div><div class="ov" style="top:50%;right:12px">L</div>
     </div></div>`;
   const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-  const off = document.createElement('canvas'); off.width = off.height = N;
-  const octx = off.getContext('2d'), img = octx.createImageData(N, N);
-  const slice = () => V.cache[V.k] || (V.cache[V.k] = makeSlice(st.region, st.contrast, V.k, st.find));
-  const loaded = {};
+  const loaded = {};   // k → Image；載入失敗記為 null，不再重複請求
   const loadImg = (k, cb) => {
-    if (loaded[k]) return cb(loaded[k]);
-    const im = new Image(); im.onload = () => { loaded[k] = im; cb(im); }; im.onerror = () => cb(null); im.src = imgs[k];
+    if (k in loaded) return cb(loaded[k]);
+    const im = new Image(); im.onload = () => { loaded[k] = im; cb(im); }; im.onerror = () => { loaded[k] = null; cb(null); }; im.src = imgs[k];
   };
   document.getElementById('tl').textContent = `${p.name}\n${st.chart}\n${sexAge(p)}`;
   document.getElementById('tr').textContent = `模擬醫院\n${st.date}\n${st.acc}\n${st.desc}`;
-  const win = g => { g = Math.max(0, Math.min(255, g)); return V.inv ? 255 - g : g; };
+  const overlay = () => {
+    const flipped = V.flip !== !!st.flip;   // 只標示使用者自己按的翻轉；送來就反的影像不給提示
+    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\nZoom: ${V.zoom.toFixed(1)}x`;
+    document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}${flipped ? '\nFLIP H' : ''}`;
+  };
   // 把影像畫到畫面上；翻轉時連燒錄在影像上的標記一起鏡像，四角的 R/L 標籤不動（模擬影像送錯方向）
-  function paint(src, w, h) {
+  function paint(im) {
+    const w = im.naturalWidth, h = im.naturalHeight, sc = Math.min(512 / w, 512 / h) * V.zoom, dw = w * sc, dh = h * sc;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
     ctx.imageSmoothingEnabled = true;
-    const sc = Math.min(512 / w, 512 / h) * V.zoom, dw = w * sc, dh = h * sc;
     ctx.save();
     if (V.flip) { ctx.translate(512, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(src, (512 - dw) / 2, (512 - dh) / 2, dw, dh);
+    ctx.drawImage(im, (512 - dw) / 2, (512 - dh) / 2, dw, dh);
     ctx.restore();
-    const flipped = V.flip !== !!st.flip;   // 只標示使用者自己按的翻轉；送來就反的影像不給提示
-    document.getElementById('bl').textContent = `Im: ${V.k + 1}/${ns}\n${st.mod || imgs ? '' : 'Thk: 5.0 mm\n'}Zoom: ${V.zoom.toFixed(1)}x${V.hu}`;
-    document.getElementById('br').textContent = `W: ${Math.round(V.ww)}  L: ${Math.round(V.wl)}${V.inv ? '\nINVERT' : ''}${flipped ? '\nFLIP H' : ''}`;
+    // W/L：以 SVG 線性轉換套在畫布上，g' = (g - lo) / ww，最後才裁切到 0–1，亮端不會提早飽和；
+    // 不讀取像素，本機以 file:// 開啟也能用
+    const lo = V.wl - V.ww / 2;
+    for (const ch of ['R', 'G', 'B']) { const f = document.getElementById('wl' + ch); f.setAttribute('slope', (255 / V.ww).toFixed(4)); f.setAttribute('intercept', (-lo / V.ww).toFixed(4)); }
+    cv.style.filter = `grayscale(1) url(#wl)${V.inv ? ' invert(1)' : ''}`;
+    overlay();
   }
   // 沒有真實影像檔：只顯示提示，不畫合成影像
   function noImage(t) {
+    cv.style.filter = '';
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
     ctx.fillStyle = '#ffd76a'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(t, 256, 246); ctx.fillText('請將真實影像檔放入 images/ 資料夾後重新整理', 256, 276); ctx.textAlign = 'left';
@@ -478,28 +400,15 @@ function renderViewer(st, back) {
     document.getElementById('br').textContent = '';
   }
   function draw() {
-    const lo = V.wl - V.ww / 2;
-    cv.style.filter = '';
-    if (imgs) return loadImg(V.k, im => {
-      if (!im) { if (!V.warned) { V.warned = true; log(`PACS 影像檔尚未上傳 ${imgs[V.k]}`); } return noImage('影像檔尚未上傳：' + imgs[V.k]); }
-      // 真實影像不讀取像素（本機以 file:// 開啟時瀏覽器會擋 getImageData），W/L 與反相改用 CSS filter：
-      // 先 contrast 再 brightness，等同 g' = (g - lo) / ww * 255
-      paint(im, im.naturalWidth, im.naturalHeight);
-      const l = Math.min(120, lo), c = 128 / (128 - l), bgt = Math.min(50, 255 / (V.ww * c));
-      cv.style.filter = `grayscale(1) contrast(${c.toFixed(3)}) brightness(${bgt.toFixed(3)})${V.inv ? ' invert(1)' : ''}`;
+    if (!imgs) return noImage('此檢查尚無真實影像檔');
+    const k = V.k;
+    loadImg(k, im => {
+      if (!cv.isConnected || k !== V.k) return;   // 已離開檢視器，或已換到別張：忽略晚到的載入結果
+      if (!im) { if (!V.warned) { V.warned = true; log(`PACS 影像檔尚未上傳 ${imgs[k]}`); } return noImage('影像檔尚未上傳：' + imgs[k]); }
+      paint(im);
     });
-    if (!SYNTHETIC) return noImage('此檢查尚無真實影像檔');
-    const a = slice();
-    for (let n = 0; n < N * N; n++) {
-      const g = win((a[n] - lo) / V.ww * 255);
-      img.data[n * 4] = img.data[n * 4 + 1] = img.data[n * 4 + 2] = g; img.data[n * 4 + 3] = 255;
-    }
-    octx.putImageData(img, 0, 0);
-    // 合成 X 光的鉛字 L 標記（放在病人左側）；影像被翻轉時會跟著鏡像、字形反轉
-    if (st.mod === 'CR') { octx.fillStyle = V.inv ? '#000' : '#fff'; octx.font = 'bold 24px sans-serif'; octx.fillText('L', 226, 44); }
-    paint(off, N, N);
   }
-  const setP = i => { V.wl = ps[i][1]; V.ww = ps[i][2]; draw(); };
+  const setP = i => { V.wl = PRESETS[i][1]; V.ww = PRESETS[i][2]; draw(); };
   document.getElementById('back').onclick = () => { S.study = null; (back || renderPACS)(); };
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => setP(+b.dataset.p));
   document.getElementById('flip').onclick = () => { V.flip = !V.flip; log(`PACS 左右翻轉 ${st.acc}`); draw(); };
@@ -511,14 +420,7 @@ function renderViewer(st, back) {
   let drag = null;
   cv.onmousedown = e => drag = { x: e.clientX, y: e.clientY, wl: V.wl, ww: V.ww };
   window.onmouseup = () => drag = null;
-  cv.onmousemove = e => {
-    const r = cv.getBoundingClientRect(), sz = 512 * V.zoom;
-    let px = ((e.clientX - r.left) * 512 / r.width - (512 - sz) / 2) / sz * N; const py = ((e.clientY - r.top) * 512 / r.height - (512 - sz) / 2) / sz * N;
-    if (V.flip) px = N - px;
-    V.hu = !st.mod && !imgs && px >= 0 && py >= 0 && px < N && py < N ? `\nHU: ${Math.round(slice()[Math.floor(py) * N + Math.floor(px)])}` : '';
-    if (drag) { V.ww = Math.max(1, drag.ww + (e.clientX - drag.x) * 4); V.wl = drag.wl + (e.clientY - drag.y) * 2; }
-    draw();
-  };
+  cv.onmousemove = e => { if (!drag) return; V.ww = Math.max(1, drag.ww + (e.clientX - drag.x) * 4); V.wl = drag.wl + (e.clientY - drag.y) * 2; draw(); };
   draw();
 }
 
