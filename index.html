@@ -126,21 +126,23 @@ const patients = {
   '10112754': { name: '陳建弘', sex: 'M', dob: '1958-05-20', allergy: '無' },
 };
 
-// 使用者提供的真實腹部骨盆 CT（由上而下 01→05）；所有腹部類 CT 醫囑掃描後都顯示這一組
-const CT_AP = ['images/b_ct_01.png', 'images/b_ct_02.png', 'images/b_ct_03.png', 'images/b_ct_04.png', 'images/b_ct_05.png'];
+// 使用者提供的真實 CT 影像（去識別化、由上胸至骨盆、由上而下）：含顯影劑 ct_c_01–21、無顯影劑 ct_nc_01–20
+// 腹部類 CT 醫囑掃描後顯示整組；胸部 CT 只取上胸至橫膈的切面；打或不打顯影劑決定用哪一組
+const seq = (prefix, n) => Array.from({ length: n }, (_, i) => `images/${prefix}_${String(i + 1).padStart(2, '0')}.png`);
+const CT_AP = seq('ct_c', 21), CT_AP_NC = seq('ct_nc', 20);
+const CT_CHEST = CT_AP.slice(0, 7), CT_CHEST_NC = CT_AP_NC.slice(0, 5);
 const orders = [
-  { chart: '10023456', exam: 'Chest CT', region: 'chest', contrast: true, dept: '胸腔內科', dx: '右上肺結節追蹤' },
+  { chart: '10023456', exam: 'Chest CT', region: 'chest', contrast: true, dept: '胸腔內科', dx: '右上肺結節追蹤', imgs: CT_CHEST, imgsNC: CT_CHEST_NC },
   { chart: '10023457', exam: 'Brain CT', region: 'brain', contrast: false, dept: '急診醫學科', dx: '頭部外傷，意識改變' },
-  { chart: '10031822', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般外科', dx: '右下腹痛 r/o 闌尾炎', imgs: CT_AP },
-  { chart: '10045519', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '無痛性血尿', imgs: CT_AP },
-  { chart: '10052003', exam: 'Chest CT', region: 'chest', contrast: true, dept: '心臟血管內科', dx: '胸痛 r/o 主動脈剝離' },
+  { chart: '10031822', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般外科', dx: '右下腹痛 r/o 闌尾炎', imgs: CT_AP, imgsNC: CT_AP_NC },
+  { chart: '10045519', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '無痛性血尿', imgs: CT_AP, imgsNC: CT_AP_NC },
+  { chart: '10052003', exam: 'Chest CT', region: 'chest', contrast: true, dept: '心臟血管內科', dx: '胸痛 r/o 主動脈剝離', imgs: CT_CHEST, imgsNC: CT_CHEST_NC },
   { chart: '10071345', exam: 'Chest+Abdomen+Pelvis CT', region: 'cap', contrast: true, dept: '內科加護病房', dx: '疑似腹內感染之敗血性休克，找感染源',
-    time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）' },
-  { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00', imgs: CT_AP },
+    time: '15:00', scanSec: 60, cond: '插管使用呼吸器中、Norepinephrine 輸注中（詳見轉送交班單）', imgs: CT_AP, imgsNC: CT_AP_NC },
+  { chart: '10083627', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '一般內科', dx: '上腹痛、體重減輕 r/o 胰臟腫瘤', time: '16:00', imgs: CT_AP, imgsNC: CT_AP_NC },
   { chart: '10112745', exam: 'Abdomen+Pelvis CT', region: 'abdomen', site: '腹部＋骨盆', contrast: true, dept: '急診醫學科', dx: '機車車禍多重創傷，左上腹及骨盆壓痛，r/o 腹內出血',
-    time: 'STAT', urgent: true, scanSec: 60, find: 'trauma', cond: '創傷病人，頸圈固定中，急診護理師陪同',
-    imgs: CT_AP },
-  { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30', imgs: CT_AP },
+    time: 'STAT', urgent: true, scanSec: 60, find: 'trauma', cond: '創傷病人，頸圈固定中，急診護理師陪同', imgs: CT_AP, imgsNC: CT_AP_NC },
+  { chart: '10112754', exam: 'Abdomen CT', region: 'abdomen', contrast: true, dept: '泌尿科', dx: '腎結石追蹤', time: '14:30', imgs: CT_AP, imgsNC: CT_AP_NC },
 ].map((o, i) => ({ ...o, acc: `CT${accDay}${String(i + 1).padStart(3, '0')}`, time: o.time || `${String(8 + i).padStart(2, '0')}:30`, status: '待檢查', note: '' }));
 
 // 項目: [名稱, 單位, 下限, 上限]
@@ -288,8 +290,9 @@ function bindCT(o) {
     msg.className = 'muted';
     const abort = document.getElementById('abort');
     abort.hidden = false; abort.disabled = false;
+    const all = useC ? o.imgs : (o.imgsNC || o.imgs), total = all ? all.length : totalOf(o.region);
     const send = n => studies.push({ acc: o.acc, chart: o.chart, date: todayStr, desc: `${o.exam} (${useC ? 'C+' : 'C-'})${n ? '（中止，部分影像）' : ''}`, region: o.region, contrast: useC, n, find: o.find,
-      imgs: o.imgs && (n ? o.imgs.slice(0, Math.max(1, Math.round(o.imgs.length * o.pct / 100))) : o.imgs) });
+      imgs: all && (n ? all.slice(0, n) : all) });
     o.pct = 0;
     const timer = setInterval(() => {
       o.pct++; bar.style.width = o.pct + '%'; pct.textContent = o.pct + '%'; msg.textContent = `掃描中… ${o.pct}%`;
@@ -302,7 +305,7 @@ function bindCT(o) {
     abort.onclick = () => {
       clearInterval(timer);
       o.status = '中止';
-      const n = Math.round(totalOf(o.region) * o.pct / 100);
+      const n = Math.round(total * o.pct / 100);
       if (n) send(n);
       log(`中止掃描 ${o.acc}（進度 ${o.pct}%，已取得 ${n} 張影像）`);
       if (S.view === 'ct') renderCT();
